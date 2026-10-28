@@ -129,6 +129,16 @@
       "name": "memory-guard",
       "source": "./memory-guard",
       "description": "Memory meter in the prompt footer, warn/critical band with Not now / Let Claude clean it (graceful quit only, after a confirm), /mem lists top users by app, chat and MCP server"
+    },
+    {
+      "name": "hud",
+      "source": "./hud",
+      "description": "One clean strip: live effort level and memory bar with small change animations; /hud place footer|band|hint|pane|off, saved for every new chat"
+    },
+    {
+      "name": "chat-tidy",
+      "source": "./chat-tidy",
+      "description": "Once a day backs up chat transcripts, then archives chats idle 14+ days (never pinned, running or open); /tidy to preview"
     }
   ]
 }
