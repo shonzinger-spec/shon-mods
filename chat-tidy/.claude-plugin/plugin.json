@@ -1,1 +1,8 @@
-{ "name": "chat-tidy", "version": "0.0.0", "description": "placeholder; auto-publish fills this in" }
+{
+  "name": "chat-tidy",
+  "version": "0.1.0",
+  "author": {
+    "name": "Shon Zinger"
+  },
+  "description": "Archives Claude desktop chats idle for 14+ days, once a day, after backing up raw transcripts to the second brain. Never touches pinned, running, open or its own chat. Reversible from the sidebar's Archived filter."
+}
