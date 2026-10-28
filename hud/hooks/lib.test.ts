@@ -137,3 +137,11 @@ test('stripSvg: motion off drops animation, critical is red, text escaped', () =
   expect(s).toContain('a&lt;b&amp;c&gt;')
   expect(stripSvg({ e: SE, arr: '', m: null, motion: true })).not.toContain('>ram<')
 })
+
+test('stripSvg animates in-image (twinkle, tag glow, sweep) only with motion on', () => {
+  const on = stripSvg({ e: SE, arr: '', m: SM, motion: true })
+  expect((on.match(/<animate /g) ?? []).length).toBeGreaterThanOrEqual(6)
+  expect(on).toContain('values="0.12;0.45;0.12"')
+  expect(on).toContain('attributeName="x"')
+  expect(stripSvg({ e: SE, arr: '', m: SM, motion: false })).not.toContain('<animate')
+})

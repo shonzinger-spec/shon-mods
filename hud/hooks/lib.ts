@@ -186,21 +186,36 @@ export function svgStrip(o: SvgModel): { svg: string; w: number; alt: string } {
     const y0 = (SH - SW) / 2
     const cols = Math.floor(fw / CELL)
     const rows = Math.floor(SW / CELL)
-    let dots = ''
+    // Dots in four groups that twinkle out of phase (SVG's own <animate>, so the
+    // motion plays inside the image wherever it is drawn).
+    const groups = ['', '', '', '']
     for (let c = 0; c < cols; c++) {
       const density = 0.35 + 0.6 * Math.pow(c / Math.max(1, cols), 1.2)
       for (let r = 0; r < rows; r++) {
-        if (noise(c, r) < density) dots += `<rect class="t${Math.floor(noise(r, c) * 4)}" x="${c * CELL + 0.5}" y="${r * CELL + 0.5}" width="2" height="2"/>`
+        if (noise(c, r) < density) groups[Math.floor(noise(r, c) * 4)] += `<rect x="${c * CELL + 0.5}" y="${r * CELL + 0.5}" width="2" height="2"/>`
       }
     }
-    const tw = Math.round(16 + textWidth(label, FS - 1))
-    const tx = Math.max(0, Math.min(w - tw, fw - tw))
+    const tw = [['2.2s', '0s'], ['2.8s', '0.7s'], ['1.9s', '1.3s'], ['3.3s', '0.4s']]
+    const dots = groups
+      .map((g, i) => (g ? `<g class="t${i}">${g}${o.motion ? `<animate attributeName="opacity" values="1;0.25;1" dur="${tw[i]![0]}" begin="${tw[i]![1]}" repeatCount="indefinite"/>` : ''}</g>` : ''))
+      .join('')
+    const tagW = Math.round(16 + textWidth(label, FS - 1))
+    const tx = Math.max(0, Math.min(w - tagW, fw - tagW))
+    // A soft glow that breathes behind the tag, and a light sweep along the track.
+    const glow = o.motion
+      ? `<rect x="${tx - 3}" y="-2" width="${tagW + 6}" height="${SW + 4}" rx="${(SW + 4) / 2}" fill="${color}" opacity="0.2"><animate attributeName="opacity" values="0.12;0.45;0.12" dur="2.4s" repeatCount="indefinite"/></rect>`
+      : ''
+    const sweep = o.motion
+      ? `<rect x="-40" width="36" height="${SW}" fill="url(#s${gid})"><animate attributeName="x" values="-40;${w + 4};${w + 4}" keyTimes="0;0.55;1" dur="4s" repeatCount="indefinite"/></rect>`
+      : ''
+    defs.push(`<linearGradient id="s${gid}" x1="0" x2="1" y1="0" y2="0"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset="0.5" stop-color="#fff" stop-opacity="0.22"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>`)
     defs.push(`<clipPath id="c${gid}"><rect width="${w}" height="${SW}" rx="${SW / 2}"/></clipPath>`)
     parts.push(
       `<g transform="translate(${x},${y0})"><rect class="k" width="${w}" height="${SW}" rx="${SW / 2}"/>` +
-        `<g clip-path="url(#c${gid})" fill="${color}">${dots}</g>` +
-        `<rect x="${tx}" width="${tw}" height="${SW}" rx="${SW / 2}" fill="${color}"/>` +
-        `<text x="${tx + tw / 2}" y="${SW / 2 + 3.8}" text-anchor="middle" font-family="${FONT}" font-size="${FS - 1}" font-weight="600" fill="#fff">${xml(label)}</text></g>`,
+        `<g clip-path="url(#c${gid})"><g fill="${color}">${dots}</g>${sweep}</g>` +
+        glow +
+        `<rect x="${tx}" width="${tagW}" height="${SW}" rx="${SW / 2}" fill="${color}"/>` +
+        `<text x="${tx + tagW / 2}" y="${SW / 2 + 3.8}" text-anchor="middle" font-family="${FONT}" font-size="${FS - 1}" font-weight="600" fill="#fff">${xml(label)}</text></g>`,
     )
     x += w
   }
