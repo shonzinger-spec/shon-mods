@@ -1,0 +1,23 @@
+{
+  "name": "cost-band",
+  "version": "0.1.1",
+  "author": {
+    "name": "shon"
+  },
+  "description": "Status line with session $ and cache ratio (\"$12.34 · cache 87%\"), always on; above the prompt an amber band from the nudge cost (default $15) saying to start a new session, red at the limit (default $20), and one toast at each. Refreshes after each turn and every 60 s.",
+  "types": "./types/index.d.ts",
+  "userConfig": {
+    "limit_usd": {
+      "type": "number",
+      "title": "Session cost limit (USD)",
+      "description": "The band turns red at this cost. If the nudge is not below it, amber starts at 80% of this.",
+      "default": 20
+    },
+    "nudge_usd": {
+      "type": "number",
+      "title": "Start-a-new-session nudge (USD)",
+      "description": "From this cost the band turns amber and says to start a new session; a toast fires once here and once at the limit.",
+      "default": 15
+    }
+  }
+}

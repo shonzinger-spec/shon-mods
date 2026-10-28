@@ -1,0 +1,59 @@
+{
+  "_comment": "Known-defective data files. Edit freely; /bad-data reloads it. `match` is a case-insensitive substring, or a JS regex after 'regex:'. Every field but id/match/defect is optional.",
+  "files": [
+    {
+      "id": "nq-kaggle-offset",
+      "match": "NQ_1m_kaggle_clean",
+      "defect": "labelled +1 MINUTE off (bar-END stamps, not bar-START) and forward-adjusted with roll steps",
+      "safe_use": "intraday legs within one session",
+      "unsafe": "levels across days (gaps, prior-day H/L, overnight), joins to another feed by timestamp",
+      "instead": "cross-check against a second feed by VOLUME correlation across lags before trusting a timestamp join",
+      "source": "reference_kaggle_1m_offset_defect.md"
+    },
+    {
+      "id": "es-new-bad-bars",
+      "match": "ES_1m_new",
+      "defect": "6,231 corrupt bars",
+      "instead": "ES_1m_clean or ES_1m_6mo (ES_1m_6mo + NQ_1m_6mo are a matched pair)",
+      "source": "project_nq_es_rv.md"
+    },
+    {
+      "id": "nq-primary-rolls",
+      "match": "NQ_1m_primary",
+      "defect": "unadjusted contract rolls: the roll gaps fake overnight/multi-day gains",
+      "safe_use": "intraday returns that never span a roll",
+      "unsafe": "overnight or multi-day holds, carry, anything across a roll date",
+      "source": "project_overnight_edge.md"
+    },
+    {
+      "id": "mgc-5m-hole",
+      "match": "regex:(?<![\\w])MGC_5m\\.parquet|orbpb_MGC_5m\\.parquet",
+      "defect": "110-day hole 2026-03-24 -> 2026-07-12; train vs post-hole are different vendors (seam, ~1.6x vol); train-era volume is placeholder 1.0",
+      "safe_use": "recent live bars (observe.py feeds from it)",
+      "unsafe": "any train -> post-hole OOS claim, volume features before the hole, backtests spanning Mar-Jul 2026",
+      "instead": "data/processed/topstep/MGC_5m_topstep.parquet (clean real CME feed) for out-of-sample",
+      "source": "project_mnq_mgc_orbpb.md"
+    },
+    {
+      "id": "lse-dotF-rolls",
+      "match": "regex:(?<![\\w])(?:ES|NQ|GC|SI)\\.F(?![\\w])",
+      "defect": "LSE .F stitched continuous series: roll method undisclosed",
+      "safe_use": "intraday returns within one day",
+      "unsafe": "price levels across days, overnight gaps, multi-day holds",
+      "source": "reference_lse_market_data.md"
+    }
+  ],
+  "costs": {
+    "_comment": "Measured round-trip costs in points, read by verdict.py (verdict/2 cost_gate). rt_pts = the floor; rt_pts_open = the floor when cost_model.session is 'open'.",
+    "NQ": {
+      "rt_pts": 0.9,
+      "rt_pts_open": 2.5,
+      "source": "project_entry_research_e1e2.md + project_costflip_2026_10_07.md: measured NQ round-trip ~0.9 pt midday, ~2.5 pt at the open"
+    },
+    "MNQ": {
+      "rt_pts": 0.9,
+      "rt_pts_open": 2.5,
+      "source": "project_entry_research_e1e2.md + project_costflip_2026_10_07.md: measured NQ round-trip ~0.9 pt midday, ~2.5 pt at the open"
+    }
+  }
+}

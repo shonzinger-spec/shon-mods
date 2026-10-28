@@ -1,0 +1,88 @@
+{
+ "ack": "^(thanks|thank you|thx|ty|nice|great|cool|perfect|awesome|amazing|got it|noted)( (so much|a lot|again))?[.! ]*$",
+ "followUp": "^(yes|yep|yeah|y|ok|okay|sure|go|go ahead|do it|lets do it|let's do it|please do|build it|try again|do everything|do both|do all|ship it|lgtm|sounds good|proceed|continue|keep going|carry on|lets continue|let's continue|please continue|can (u|you|we)( please| pls)? continue)\\b",
+ "continuation": "^((ok|okay|yes|yep|yeah|sure|please)[ ,.!]*)?((lets|let's|please|pls|can (u|you)|go ahead and)\\s+)?(continue|keep going|carry on|go on|proceed|resume)\\b",
+ "handoff": "\\b((in|into|to|for|on) (a |an |the )?(new|fresh|next|another|separate|different|other)|(start|open|begin|spin up) (a |an )?(new|fresh|separate|different|another)) (session|chat|window|conversation|thread)s?\\b",
+ "low": [
+  "\\btypos?\\b",
+  "\\brename\\b",
+  "\\breword\\b",
+  "\\bbump\\b",
+  "\\bspelling\\b",
+  "\\bformat(ting)?\\b",
+  "\\bone[- ]liner\\b",
+  "\\bquick (fix|tweak|edit)\\b",
+  "\\b(give|write) me a (prompt|handoff)\\b",
+  "\\bwhat does .{1,40} mean\\b",
+  "\\bis it (still )?(running|going|done)\\b"
+ ],
+ "medium": [
+  "\\b(add|implement|build|write|create|update|wire|hook up|port|convert|install|set up|setup|draft|deploy)\\b"
+ ],
+ "high": [
+  "\\bdebug",
+  "\\broot cause\\b",
+  "\\bwhy (does|is|did)\\b",
+  "\\bdesign\\b",
+  "\\barchitect",
+  "\\bbacktest",
+  "\\blook-?ahead\\b",
+  "\\bleak",
+  "\\bout[- ]of[- ]sample\\b",
+  "\\boos\\b",
+  "\\bprereg",
+  "\\boverfit",
+  "\\bstrat(s|egy|egies)?\\b",
+  "\\bsweeps?\\b",
+  "\\bedge\\b",
+  "\\baudit\\b",
+  "\\breview\\b",
+  "\\binvestigat",
+  "\\banaly[sz]",
+  "\\brace condition\\b",
+  "\\bdeadlock\\b",
+  "\\bflaky\\b",
+  "\\btrade-?offs?\\b",
+  "\\brefactor\\b"
+ ],
+ "stakes": [
+  "\\breal money\\b",
+  "\\blive (account|accounts|capital|trading|orders?|executor|bot)\\b",
+  "\\bfunded account",
+  "\\bsecurity\\b",
+  "\\bvulnerab",
+  "\\bcredentials?\\b",
+  "\\btakeover\\b",
+  "\\bexploit",
+  "\\birreversible\\b",
+  "\\bdata loss\\b",
+  "\\bdrop (table|database)\\b",
+  "\\bforce[- ]push\\b",
+  "\\bproduction (db|database|data)\\b",
+  "\\bthink (very )?hard\\b",
+  "\\bhigh[- ]stakes\\b",
+  "\\bformal(ly)? verif"
+ ],
+ "breadth": [
+  "\\b(all|every|each) (of )?(the |these |those |my |our )?(strats?|strateg(y|ies)|variations?|variants?|settings|families|tests?|papers|videos|files|mods|jobs|tasks|items|sources|ideas)\\b",
+  "\\ball (of )?(them|these|those)\\b",
+  "\\b(go|dig|look) (through|into) (all|every|everything)\\b",
+  "\\b(re-?run|redo|re-?test|test|check|audit|port|finish|sweep|scan) (all|every|everything)\\b",
+  "\\beverything (that )?(we|weve|we've|u|you) (have |had )?(done|did|tested|built|tried)\\b",
+  "\\bwhole (business|codebase|repo|project|program|system|pipeline)\\b",
+  "\\buntil (u|you|we) find\\b",
+  "\\b\\d{2,}\\+? (strats?|strateg(y|ies)|variants?|files|videos|items|prompts|tests|configs)\\b",
+  "\\bas (the )?orchestrator\\b"
+ ],
+ "folders": {
+  "~/Trading": "high",
+  "~/propfarm-2026": "high",
+  "~/competition": "high",
+  "~/.claude/mods-src": "medium"
+ },
+ "ultracode": {
+  "auto": true,
+  "governSession": true
+ },
+ "haiku": true
+}

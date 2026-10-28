@@ -1,0 +1,1 @@
+{ "name": "effort-router", "version": "0.2.2", "author": { "name": "shonzinger" }, "description": "Picks the effort level and whether to use ultracode for each prompt you type (Haiku + calibration rules, keyword fallback), with !low..!max, !ultra and !solo overrides." }

@@ -1,0 +1,114 @@
+{
+ "_comment": "forward-pane: which launchd jobs to show and how to count each one's trades. Jobs whose label matches label_regex are found in ~/Library/LaunchAgents by themselves; a 'jobs' entry adds a name, a ledger, a count rule and a target n. count: {kind: lines|csv|jsonl, field, equals} counts rows (csv: data rows) whose field equals the value; no field counts every row. hidden: true leaves a job out.",
+ "label_regex": "propfarm|mnq-mgc|claude4b|oftick|v62|lilfish",
+ "daemon_stale_hours": 3,
+ "jobs": {
+  "com.propfarm.oftick_forward": {
+   "name": "v62 OF-TICK forward",
+   "ledger": "~/propfarm-2026/forward_v62_oftick/out/ledger.csv",
+   "count": {
+    "kind": "csv",
+    "field": "status",
+    "equals": "traded"
+   },
+   "target_n": 60,
+   "target_note": "futility look at 30, PASS look at 60 (out/STATUS.md)"
+  },
+  "com.propfarm.conti_forward": {
+   "name": "v54 Conti S3 forward",
+   "ledger": "~/propfarm-2026/conti_v54/out/ledger.csv",
+   "count": {
+    "kind": "csv"
+   },
+   "target_n": null
+  },
+  "com.propfarm.claude4b": {
+   "name": "Lil Fish 4b (plans)",
+   "ledger": "~/propfarm-2026/lilfish/farm/claude4b/plans/plans.jsonl",
+   "count": {
+    "kind": "jsonl"
+   },
+   "unit": "plans",
+   "target_n": null
+  },
+  "com.propfarm.livepractice": {
+   "name": "restart live practice",
+   "ledger": "~/propfarm-2026/restart/out_live/ledger.csv",
+   "count": {
+    "kind": "csv"
+   },
+   "unit": "rows",
+   "target_n": null
+  },
+  "com.propfarm.ticks": {
+   "name": "LSE tick collector (weekly)"
+  },
+  "com.mnq-mgc.noisemom": {
+   "name": "MNQ noise momentum paper",
+   "ledger": "~/mnq-mgc-research/logs/noise_mom_paper.jsonl",
+   "count": {
+    "kind": "jsonl",
+    "field": "action",
+    "equals": "entry"
+   },
+   "target_n": null,
+   "unit": "entries"
+  },
+  "com.mnq-mgc.noisemom-pair": {
+   "name": "noise mom pair (0.25% stop)",
+   "ledger": "~/mnq-mgc-research/logs/noise_mom_pair_paper.jsonl",
+   "count": {
+    "kind": "jsonl",
+    "field": "kind",
+    "equals": "trade",
+    "and_field": "variant",
+    "and_equals": "stop_0.25pct"
+   },
+   "target_n": null
+  },
+  "com.mnq-mgc.hvfade-decide": {
+   "name": "HV fade (decide)",
+   "ledger": "~/mnq-mgc-research/logs/hvfade_paper.jsonl",
+   "count": {
+    "kind": "jsonl",
+    "field": "action",
+    "equals": "trade"
+   },
+   "target_n": null
+  },
+  "com.mnq-mgc.hvfade-book": {
+   "name": "HV fade (book)"
+  },
+  "com.mnq-mgc.mgcorbpb": {
+   "name": "MGC ORB-PB paper",
+   "ledger": "~/mnq-mgc-research/logs/mgc_orbpb_paper.jsonl",
+   "count": {
+    "kind": "jsonl",
+    "field": "event",
+    "equals": "entry"
+   },
+   "target_n": null,
+   "unit": "entries"
+  },
+  "com.mnq-mgc.observe": {
+   "name": "MarketOS observe"
+  },
+  "com.mnq-mgc.analysis": {
+   "name": "MarketOS analysis"
+  },
+  "com.mnq-mgc.health": {
+   "name": "MarketOS health snapshot"
+  },
+  "com.mnq-mgc.bridge": {
+   "name": "MarketOS bridge"
+  },
+  "com.mnq-mgc.dashboard": {
+   "name": "MarketOS dashboard",
+   "hidden": true
+  },
+  "com.mnq-mgc.caffeinate": {
+   "name": "caffeinate",
+   "hidden": true
+  }
+ }
+}

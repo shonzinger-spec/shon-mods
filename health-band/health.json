@@ -1,0 +1,18 @@
+{
+  "_comment": "health-band checks. Feeds: newest bar (bar start + bar_minutes) must be within max_stale_market_min CME Globex minutes (Sun 18:00 -> Fri 17:00 ET, daily halt 17:00-18:00 ET; exchange holidays not modelled). ts: a column name, or 'index' for the parquet's index. forward_pane: the forward-pane collector reused for stale jobs. Gauges (always drawn): lse_calls_log lines dated today (local) out of lse_daily_limit; agent_logs = dispatch.sh logs started today or still running; profile_script's `measure` desc_chars plus user_skills descriptions, /4 = tokens per turn.",
+  "label_regex": "propfarm|mnq-mgc|claude4b|oftick|v62|lilfish",
+  "log_window_hours": 24,
+  "lse_key": "~/.lse_key",
+  "lse_calls_log": "~/.lse_calls.log",
+  "lse_daily_limit": 15000,
+  "agent_logs": "~/Trading/_scratch/agent-pipeline/logs",
+  "profile_script": "~/.claude/mods-src/profile/scripts/profile.py",
+  "user_skills": "~/.claude/skills/*/SKILL.md",
+  "forward_pane": "~/.claude/mods-src/forward-pane/scripts/forward_status.py",
+  "feeds": [
+    { "name": "MNQ 5m (observe)", "path": "~/mnq-mgc-research/data/processed/MNQ_5m.parquet", "ts": "timestamp", "bar_minutes": 5, "max_stale_market_min": 30 },
+    { "name": "MGC 5m (observe)", "path": "~/mnq-mgc-research/data/processed/MGC_5m.parquet", "ts": "timestamp", "bar_minutes": 5, "max_stale_market_min": 30 },
+    { "name": "MNQ 1m topstep (noise mom)", "path": "~/mnq-mgc-research/data/cache/noise_mom_MNQ_1m_topstep.parquet", "ts": "index", "bar_minutes": 1, "max_stale_market_min": 30 },
+    { "name": "MGC 5m topstep (ORB-PB)", "path": "~/mnq-mgc-research/data/cache/orbpb_MGC_5m_topstep.parquet", "ts": "index", "bar_minutes": 5, "max_stale_market_min": 30 }
+  ]
+}

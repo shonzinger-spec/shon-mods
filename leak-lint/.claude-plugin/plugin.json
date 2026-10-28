@@ -1,0 +1,1 @@
+{ "name": "leak-lint", "version": "0.1.0", "author": { "name": "shon" }, "description": "Warns (never blocks) when a Write/Edit to a .py file in a trading repo introduces lookahead patterns: shift(-N), forward indexing, fills at the signal bar's close, future-window aggregates, bfill, centered windows, full-sample normalisation." }

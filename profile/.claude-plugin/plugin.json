@@ -1,0 +1,1 @@
+{ "name": "profile", "version": "0.1.0", "author": { "name": "shon" }, "description": "/profile: switch which plugin set loads next session (trading, business, coding, all), while preserving a restorable full-plugin snapshot." }

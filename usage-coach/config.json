@@ -1,0 +1,26 @@
+{
+  "aliases": {
+    "agent stuff": "agent",
+    "youtube automation": "youtube",
+    "engineering · ee portfolio": "engineering",
+    "business": "business",
+    "trading": "trading",
+    "engineering": "engineering"
+  },
+  "keywords": {
+    "trading": ["nq", "mnq", "es", "mes", "mgc", "gc", "futures?", "backtest\\w*", "strateg\\w*", "trad(?:e|es|ing)", "prop", "topstep", "apex", "pine", "ohlcv?", "parquet", "sharpe", "orb", "vwap", "scalp\\w*", "prereg", "slippage", "tick"],
+    "youtube": ["youtube", "yt", "video", "thumbnail", "shorts", "upload\\w*", "channel", "voiceover", "ffmpeg"],
+    "business": ["autorank", "seo", "outreach", "prospects?", "leads?", "clients?", "agency", "send.?pack", "cold.?email", "airtable", "objection", "calls?"],
+    "engineering": ["ee", "electrical", "pcb", "schematic\\w*", "autocad", "cad", "dxf", "qcad", "kicad", "circuit\\w*", "ladder", "plc", "bim\\w*", "bonsai", "revit", "portfolio"],
+    "agent": ["claude", "mods?", "plugins?", "hooks?", "skills?", "mcp", "agents?", "conductor", "second.?brain", "launchd", "subagents?", "healthchecks?", "run_job"]
+  },
+  "priors": { "S": 0.5, "M": 2, "L": 5, "XL": 12 },
+  "reservePct": 5,
+  "sectionBonus": 1.15,
+  "parallelWindowMin": 15,
+  "parallelMax": 3,
+  "calibrationDays": 14,
+  "minCalibrationIntervals": 3,
+  "minRisePoints": 2,
+  "measuredMin": 3
+}

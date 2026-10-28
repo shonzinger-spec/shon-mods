@@ -1,0 +1,14 @@
+{
+  "name": "output-cap",
+  "version": "0.1.0",
+  "author": { "name": "shon" },
+  "description": "Bash results over 150 lines reach Claude as their first and last lines with a note of how many lines were cut, so a long log or test run does not flood the context.",
+  "userConfig": {
+    "max_lines": {
+      "type": "number",
+      "title": "Max Bash output lines",
+      "description": "stdout and stderr together keep at most this many lines (first and last of each long stream), with a note of the lines cut. Errored results too.",
+      "default": 150
+    }
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "name": "usage-coach",
+  "version": "0.1.0",
+  "author": {
+    "name": "shon"
+  },
+  "description": "Pro-plan weekly-limit coach: status line \"wk 53% · 5.7d · ~8.2%/day\", an amber band when today's spend beats the daily allowance or more than 3 sessions run in parallel, /budget, /next and a task queue (tasks.md) with measured cost per task. Logs plugin/skill/agent use to state/tool-log.jsonl. Informs only; never blocks.",
+  "types": "./types/index.d.ts"
+}

@@ -1,0 +1,250 @@
+{
+ "_comment": "Strategy names kill-ledger looks for, each with its aliases. Edit freely; scripts/build_index.py turns these plus the memory files into data/kill_index.json. An alias starting with '=' is case-sensitive. Matching is whole-word. A term name starting with '?' matches a prompt only when the prompt also has a trading word (NQ, futures, backtest, strategy, edge, trade...), so 'carry on' or 'James from sales' stay quiet. A name starting with '?!' is also strict: its one-word aliases count only inside a strategy name (a trading word right before, a strategy noun right after, or 'on'/'for' plus a market right after: 'NQ sweep', 'carry strategy', 'carry on ZN'), so 'parameter sweep on the NQ strategy' or 'carry on with the backtest' stay quiet even in a trading prompt.",
+ "ORB": [
+  "orb",
+  "opening range",
+  "opening-range",
+  "orb-pb",
+  "orbpb"
+ ],
+ "IFVG": [
+  "ifvg",
+  "inverse fvg",
+  "inversion fvg"
+ ],
+ "FVG": [
+  "fvg",
+  "fair value gap"
+ ],
+ "CISD": [
+  "cisd"
+ ],
+ "SCRIV": [
+  "scriv"
+ ],
+ "?James": [
+  "james"
+ ],
+ "Socrates": [
+  "socrates"
+ ],
+ "noise momentum": [
+  "noise momentum",
+  "noise-area",
+  "noise area",
+  "noise_mom",
+  "noisemom",
+  "zarattini"
+ ],
+ "TSMOM": [
+  "tsmom",
+  "time-series momentum",
+  "time series momentum"
+ ],
+ "?!carry": [
+  "carry"
+ ],
+ "?overnight": [
+  "overnight"
+ ],
+ "VWAP": [
+  "vwap"
+ ],
+ "Quarterly Theory": [
+  "quarterly theory",
+  "=QT",
+  "=QT+7H"
+ ],
+ "ICT": [
+  "ict"
+ ],
+ "CRT": [
+  "crt"
+ ],
+ "?!sweep": [
+  "sweep",
+  "liquidity sweep",
+  "sweep & reclaim",
+  "sweep and reclaim"
+ ],
+ "?footprint": [
+  "footprint"
+ ],
+ "CVD": [
+  "cvd",
+  "cumulative delta"
+ ],
+ "order flow": [
+  "order flow",
+  "orderflow",
+  "order-flow",
+  "of-tick",
+  "oftick"
+ ],
+ "markov": [
+  "markov"
+ ],
+ "?momentum": [
+  "momentum"
+ ],
+ "?mean reversion": [
+  "mean reversion",
+  "mean-reversion",
+  "reversal",
+  "fade"
+ ],
+ "trend following": [
+  "trend following",
+  "trend-following"
+ ],
+ "volume profile": [
+  "volume profile",
+  "volume-profile",
+  "=VP"
+ ],
+ "liquidity zones": [
+  "liquidity zones",
+  "liquidity entry zones",
+  "liq zones"
+ ],
+ "Lil Fish": [
+  "lil fish",
+  "lilfish"
+ ],
+ "fabio": [
+  "fabio"
+ ],
+ "?cage": [
+  "cage"
+ ],
+ "Xiznit": [
+  "xiznit"
+ ],
+ "QC Signals": [
+  "qc signals"
+ ],
+ "trigger happy": [
+  "trigger happy",
+  "pivot-fade",
+  "pivot fade"
+ ],
+ "5Lv2": [
+  "5lv2",
+  "alphatech"
+ ],
+ "CCT/ICC": [
+  "cct",
+  "icc"
+ ],
+ "Jaypelle": [
+  "jaypelle"
+ ],
+ "tabby": [
+  "tabby",
+  "7h stdv"
+ ],
+ "MIM": [
+  "=MIM",
+  "market intraday momentum"
+ ],
+ "premarket": [
+  "premarket",
+  "pre-market"
+ ],
+ "?Asia session": [
+  "asia",
+  "asian session"
+ ],
+ "?London session": [
+  "london"
+ ],
+ "announcement premium": [
+  "announcement premium",
+  "fomc"
+ ],
+ "basis momentum": [
+  "basis momentum"
+ ],
+ "curve momentum": [
+  "curve momentum",
+  "term structure",
+  "term-structure",
+  "curve18"
+ ],
+ "prop eval policy": [
+  "zero-edge",
+  "zero edge",
+  "account stacking",
+  "prop-eval",
+  "prop eval"
+ ],
+ "meta-labeling": [
+  "meta-label",
+  "meta-labeling",
+  "meta labeling",
+  "self-healing"
+ ],
+ "queue imbalance": [
+  "queue imbalance",
+  "queue-imbalance"
+ ],
+ "OTE": [
+  "=OTE",
+  "optimal trade entry"
+ ],
+ "$TICK": [
+  "$tick",
+  "nyse tick"
+ ],
+ "Mag7": [
+  "mag7",
+  "mag 7"
+ ],
+ "?pre-earnings": [
+  "pre-earnings",
+  "earnings"
+ ],
+ "?month-end": [
+  "month-end",
+  "month end",
+  "turn of month",
+  "=TOM"
+ ],
+ "?relative value": [
+  "relative value",
+  "nq/es rv",
+  "pairs"
+ ],
+ "?drift": [
+  "drift",
+  "golden ticket"
+ ],
+ "scalping": [
+  "scalp",
+  "scalper",
+  "scalping"
+ ],
+ "?breakout": [
+  "breakout",
+  "break-out"
+ ],
+ "?pullback": [
+  "pullback",
+  "pull-back"
+ ],
+ "Tokyo Drift": [
+  "tokyo drift"
+ ],
+ "stacked portfolio": [
+  "stacked portfolio",
+  "3-leg stack"
+ ],
+ "?magnets": [
+  "magnet",
+  "magnets"
+ ],
+ "rare event": [
+  "rare-event",
+  "rare event"
+ ]
+}

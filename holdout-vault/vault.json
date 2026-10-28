@@ -1,0 +1,75 @@
+{
+  "ledger": "~/Trading/_ledger/holdout_burns.jsonl",
+  "files": [
+    {
+      "match": "~/competition/data/sealed/holdout_*.parquet.enc",
+      "slug": "competition-holdout",
+      "note": "competition referee sealed holdout (ES/GC/NQ/SI), encrypted",
+      "confirmed": true
+    },
+    {
+      "match": "~/competition/data/sealed/validation_*.parquet.enc",
+      "slug": "competition-validation",
+      "note": "competition referee sealed validation set (ES/GC/NQ/SI), encrypted",
+      "confirmed": true
+    },
+    {
+      "match": "~/propfarm-2026/out/v3/holdout_series.pkl",
+      "slug": "propfarm-v3-holdout",
+      "note": "v3 holdout series; HOLDOUT_DONE marker beside it says it was already opened",
+      "confirmed": true,
+      "burned_per_memory": true
+    },
+    {
+      "match": "~/Downloads/nq_bot/NQ_1m_databento_oct25_may26.parquet",
+      "slug": "nq-databento-oct25-may26",
+      "note": "Databento NQ 1m 2025-10-01..2026-05-14, 218,502 bars: memory (momentum_v2) says still sealed and unused; noise-momentum memory says UNRESOLVED, maybe opened 2026-07-15",
+      "confirmed": true
+    },
+    {
+      "match": "~/abkrypto-strat/NQ_5m_*trueOOS*.csv",
+      "slug": "abkrypto-true-oos",
+      "note": "NQ 5m true-OOS bars (databento delta, footprint, pv)",
+      "confirmed": true,
+      "burned_per_memory": true
+    },
+    {
+      "match": "~/james-strat-level1/sample_data/NQ_1m_massive_oos.csv",
+      "slug": "james-l1-oos",
+      "note": "NQ 1m OOS bars; memory: premarket+stack died OOS (1.09), so likely burned",
+      "confirmed": true,
+      "burned_per_memory": true
+    },
+    {
+      "match": "~/Downloads/socrates_backtest/v1_asia_true_oos_*.csv",
+      "slug": "socrates-asia-true-oos",
+      "note": "Socrates v1 Asia true-OOS 5mo; memory: forward post-freeze PF 0.76 reported, so already read",
+      "confirmed": true,
+      "burned_per_memory": true
+    },
+    {
+      "match": "~/propfarm-2026/costflip/*holdout*.csv",
+      "slug": "costflip-holdouts",
+      "note": "costflip stage2 holdout result tables (outputs, not raw data)",
+      "confirmed": false
+    },
+    {
+      "match": "~/propfarm-2026/restart/out/stage2*_holdout_RESULT.csv",
+      "slug": "restart-holdout-results",
+      "note": "restart stage22/23 holdout RESULT tables (outputs)",
+      "confirmed": false
+    },
+    {
+      "match": "~/propfarm-2026/out/v42/trades_D_oos.parquet",
+      "slug": "v42-oos-trades",
+      "note": "v42 OOS trades parquet (output)",
+      "confirmed": false
+    },
+    {
+      "match": "~/nq_bot/data/processed/_wf_OOS.csv",
+      "slug": "nq-bot-wf-oos",
+      "note": "nq_bot walk-forward OOS table (output)",
+      "confirmed": false
+    }
+  ]
+}

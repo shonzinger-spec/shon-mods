@@ -1,0 +1,6 @@
+{
+  "name": "paste-dedupe",
+  "version": "0.1.0",
+  "author": { "name": "shon" },
+  "description": "When a prompt repeats a paste from an earlier message this session (8+ identical lines), the repeat is replaced by \"[same as message N: K lines …]\" so the same log or file is not sent to Claude twice."
+}

@@ -1,0 +1,5 @@
+{
+  "_comment": "data-index config. extra_roots: more folders to scan besides ~/Trading (absolute or ~ paths), e.g. [\"~/nq_bot/data\"]. skip_dirs: directory names pruned anywhere in the walk. Files under 1 KB are skipped.",
+  "extra_roots": [],
+  "skip_dirs": [".venv", "venv", "node_modules", ".git", "site-packages", "__pycache__", ".cache", ".mypy_cache", ".pytest_cache", ".ipynb_checkpoints"]
+}

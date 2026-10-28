@@ -1,0 +1,9 @@
+node_modules/
+.DS_Store
+__pycache__/
+*.pyc
+state/
+logs/
+.claude-plugin/types/
+kill-ledger/data/
+effort-router/eval/data/

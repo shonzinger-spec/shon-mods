@@ -1,0 +1,1 @@
+{ "name": "long-run", "version": "0.1.0", "author": { "name": "shon" }, "description": "Backtest-like python/uv/poetry runs: remembers how long each command signature took, refuses a foreground re-run of one that took 2+ minutes (asks for run_in_background), and sends a desktop notification when a long run ends, in the foreground or the background." }

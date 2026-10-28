@@ -1,0 +1,1 @@
+{ "name": "kill-ledger", "version": "0.1.1", "author": { "name": "shon" }, "description": "When a prompt names a strategy the memory already killed (ORB, IFVG, SCRIV, James, Socrates, TSMOM, carry, VWAP, Quarterly Theory...), toasts and tells Claude: killed on <date>: <reason> (file). Index rebuilt by script from MEMORY.md each session; /kills <name> to look one up." }

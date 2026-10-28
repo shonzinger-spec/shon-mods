@@ -1,0 +1,1 @@
+{ "name": "data-index", "version": "0.1.0", "author": { "name": "shon" }, "description": "One index of every .parquet/.csv bar file under ~/Trading: symbol, timeframe, rows, start-end, gaps outside the weekend and daily halt, roll method, and bad-data.json defects. /dataindex refreshes ~/Trading/_data/index.json in the background; /data <symbol|tf|text> looks files up." }

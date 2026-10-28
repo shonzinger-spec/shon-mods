@@ -1,0 +1,1 @@
+{ "name": "bad-data", "version": "0.1.1", "author": { "name": "shon" }, "description": "Toasts (and tells Claude) when a Read, Bash, Write or Edit touches a known-defective data file: NQ_1m_kaggle_clean, ES_1m_new, NQ_1m_primary, the MGC 5m parquet, LSE .F series. The list lives in one editable bad-data.json; /bad-data reloads it." }
