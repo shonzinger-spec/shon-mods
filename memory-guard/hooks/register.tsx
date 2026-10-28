@@ -2,9 +2,15 @@ import { atom, read, update, type Hook, type Register } from 'claude-code'
 
 import type { MemSnap } from '../types'
 import {
-  alertText, bar, barLabel, cleanCandidates, groupUsage, levelOf, memReport, meterText, mergeCfg, parsePs, parseSysctl, parseTop, shouldAlert, statusText,
+  alertText, cleanCandidates, groupUsage, levelOf, memReport, meterText, mergeCfg, parsePs, parseSysctl, parseTop, shouldAlert, statusText,
   type Cfg, type Level,
 } from './lib'
+
+// "RAM 64% · 5.9G free · swap 98%"; falls back to the long form when sizes are unknown.
+const bandMeter = (s: MemSnap) =>
+  s.memTotalMB && s.freePct !== undefined && s.swapTotalMB > 0
+    ? `RAM ${Math.round(100 - s.freePct)}% · ${((s.memTotalMB * s.freePct) / 100000).toFixed(1)}G free · swap ${Math.round((s.swapUsedMB / s.swapTotalMB) * 100)}%`
+    : meterText(s)
 
 const snapA = atom({ plugin: 'memory-guard', key: 'snap' } as const, null)
 const dismissedA = atom({ plugin: 'memory-guard', key: 'dismissed' } as const, null)
@@ -182,6 +188,13 @@ async function tick($: Ctx): Promise<void> {
     }
   }
   await update($, snapA, () => snap)
+  try {
+    await mkdirp($, `${D}/state/now.json`)
+    const { level: lv, freePct, memTotalMB, swapUsedMB, swapTotalMB, at } = snap
+    await $.fs.write(`${D}/state/now.json`, JSON.stringify({ level: lv, freePct, memTotalMB, swapUsedMB, swapTotalMB, at }))
+  } catch {
+    // the hud is optional
+  }
   $.ui.status(statusText(level, snap, snap.topName ? { name: snap.topName, mb: snap.topMb } : null))
   if (alerted || prev?.level !== level) await logRow({ alerted, top: snap.topName, topMb: Math.round(snap.topMb) })
 }
@@ -202,25 +215,6 @@ export const register: Register = on => {
     return next(e)
   })
 
-  on('ui.render', { component: 'SessionMode' }, async ($, e, next) => {
-    try {
-      const snap = await read($, snapA)
-      if (!snap) return next(e)
-      const { Box, Text } = $.ui.resolve(e)
-      return (
-        <Box>
-          {e.props.modes.length ? <Text dimColor>{e.props.modes.join(' & ')}  </Text> : null}
-          <Text dimColor>RAM </Text>
-          <Text color={COLOR[snap.level]}>{bar(100 - (snap.freePct ?? 100)).fill}</Text>
-          <Text dimColor>{bar(100 - (snap.freePct ?? 100)).track}</Text>
-          <Text color={COLOR[snap.level]}> {barLabel(snap)}</Text>
-        </Box>
-      )
-    } catch {
-      return next(e)
-    }
-  })
-
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
     try {
       if (e.props.hasSurvey) return next(e)
@@ -231,15 +225,29 @@ export const register: Register = on => {
       const { Box, Button, Text } = $.ui.resolve(e)
       const level = snap.level
       const color = COLOR[level]
+      const top = (snap.top ?? []).slice(0, 4)
       return (
         <Box flexDirection="column">
           <Box>
-            <Button key="later" label="Not now" onPress={async () => { const at = await $.clock.now(); await update($, dismissedA, () => ({ level, at })) }} />
+            <Text color={color}>▍</Text>
+            <Text bold color={color}> ● Memory {level}</Text>
+            <Text dimColor>  {bandMeter(snap)}  </Text>
+            <Button key="clean" label="Let Claude clean it" variant="primary" onPress={async () => { try { $.ui.toast(await cleanFlow($, false).catch(err => `memory-guard: ${String(err)}`), { timeoutMs: 15_000 }) } catch { /* surface gone */ } }} />
             <Text> </Text>
-            <Button key="clean" label="Let Claude clean it" onPress={async () => { try { $.ui.toast(await cleanFlow($, false).catch(err => `memory-guard: ${String(err)}`), { timeoutMs: 15_000 }) } catch { /* surface gone */ } }} />
-            <Text color={color}>  Memory {level}: {meterText(snap)}</Text>
+            <Button key="later" label="Not now" variant="secondary" onPress={async () => { const at = await $.clock.now(); await update($, dismissedA, () => ({ level, at })) }} />
           </Box>
-          {(snap.top ?? []).length ? <Text color={color}>Top: {(snap.top ?? []).slice(0, 4).map(t => `${t.name} ${(t.mb / 1000).toFixed(1)}G`).join(', ')}</Text> : null}
+          {top.length ? (
+            <Box>
+              <Text color={color}>▍</Text>
+              <Text dimColor>  Top  </Text>
+              {top.map((t, i) => (
+                <Box key={t.name}>
+                  {i ? <Text dimColor> · </Text> : null}
+                  <Text bold>{t.name} {(t.mb / 1000).toFixed(1)}G</Text>
+                </Box>
+              ))}
+            </Box>
+          ) : null}
         </Box>
       )
     } catch {

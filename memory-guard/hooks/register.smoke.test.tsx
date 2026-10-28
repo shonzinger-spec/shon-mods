@@ -109,17 +109,6 @@ test('/mem clean: Cancel quits nothing', async ($, on) => {
   expect(rows.map(x => x.action)).toContain('cancelled')
 })
 
-test('SessionMode draws the RAM meter once a snap exists', async ($, on) => {
-  on('command.register', () => ({ value: { command: 'x' } }))
-  on('session.start', (_, e) => ({ cwd: e.cwd }))
-  wire(on, JSON.stringify({ level: 'warn', at: 1_000_000 }), [])
-  await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
-  await new Promise(r => setTimeout(r, 400))
-  const ui = await $.ui.mount({ plugin: 'memory-guard', surface: 'terminal', component: 'SessionMode', props: { modes: ['plan'] } })
-  expect(await ui.find({ type: 'Text', text: /RAM/ })).toBeDefined()
-  await ui.unmount()
-})
-
 test('band: Not now hides it; Let Claude clean it picks, confirms and quits one app', async ($, on) => {
   on('command.register', () => ({ value: { command: 'x' } }))
   on('session.start', (_, e) => ({ cwd: e.cwd }))
