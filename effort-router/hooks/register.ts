@@ -236,6 +236,19 @@ async function session($: EngineInterface): Promise<{ prev: string; ultra: Ultra
   return { prev: lastAssistantText(list), ultra: ultraState(list) }
 }
 
+// Tiny file the hud mod reads. Never throws and never changes routing.
+let sessionId = ''
+async function publish($: EngineInterface, level: string, ultracode: boolean, reason: string, source: 'auto' | 'forced' | 'yours'): Promise<void> {
+  try {
+    if (!sessionId) sessionId = String(await $.session.id())
+    const dir = `${(await $.env.get('HOME')) ?? ''}/.claude/mods-src/effort-router/state`
+    await $.process.run(['/bin/sh', '-c', 'mkdir -p "$1"', 'sh', dir], { timeoutMs: 5000 })
+    await $.fs.write(`${dir}/now-${sessionId}.json`, JSON.stringify({ level, ultracode, reason, source, at: Date.now() }))
+  } catch {
+    // the hud is optional
+  }
+}
+
 const show = (p: Plan) => `effort: ${p.level}${p.ultracode ? ' + ultracode' : ''} · ${p.reason}`
 
 export const register: Register = on => {
@@ -244,6 +257,11 @@ export const register: Register = on => {
       name: 'effort-router',
       description: 'Per-prompt effort + ultracode routing: /effort-router on|off. Prefix a prompt with !low !med !high !xhigh !max !ultra !solo to force.',
     })
+    try {
+      sessionId = String(await $.session.id())
+    } catch {
+      // resolved lazily on first write
+    }
     return next(e)
   })
 
@@ -296,6 +314,7 @@ export const register: Register = on => {
     plan = p
     last = p
     $.ui.status(show(p))
+    void publish($, p.level, p.ultracode, p.reason, p.forced ? 'forced' : 'auto')
     const notes: string[] = []
     if (p.ultracode && (c.ultracode.auto || p.ultraForced)) {
       if (s.ultra === 'off') notes.push(ultraNote(p.reason))
@@ -318,7 +337,10 @@ export const register: Register = on => {
     const changed = e.effort !== baseline
     if (changed !== paused) {
       paused = changed
-      if (changed) $.ui.status(`effort: ${e.effort} (yours) · router paused`)
+      if (changed) {
+        $.ui.status(`effort: ${e.effort} (yours) · router paused`)
+        void publish($, e.effort, false, 'router paused', 'yours')
+      }
     }
     if (!plan || (changed && !plan.forced) || e.effort === plan.level) return yield* next(e)
     return yield* next({ ...e, effort: plan.level })
