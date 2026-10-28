@@ -145,3 +145,11 @@ test('stripSvg animates in-image (twinkle, tag glow, sweep) only with motion on'
   expect(on).toContain('attributeName="x"')
   expect(stripSvg({ e: SE, arr: '', m: SM, motion: false })).not.toContain('<animate')
 })
+
+test('stripSvg with a phase draws a still frame (no <animate>) that changes over time', () => {
+  const f0 = stripSvg({ e: SE, arr: '', m: SM, motion: true, phase: 0 })
+  const f1 = stripSvg({ e: SE, arr: '', m: SM, motion: true, phase: 1.1 })
+  expect(f0).not.toContain('<animate')
+  expect(f0).not.toBe(f1)
+  expect(stripSvg({ e: SE, arr: '', m: SM, motion: false, phase: 1.1 })).toBe(stripSvg({ e: SE, arr: '', m: SM, motion: false, phase: 0 }))
+})

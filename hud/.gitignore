@@ -1,3 +1,4 @@
 state/
 .claude-plugin/types/
 node_modules/
+.preview/

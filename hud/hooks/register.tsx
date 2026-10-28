@@ -13,6 +13,9 @@ const trendA = atom({ plugin: 'hud', key: 'trend' } as const, { prev: null, leve
 const placementA = atom({ plugin: 'hud', key: 'placement' } as const, 'footer')
 // Frames of the running animations: effort fill % and RAM used %; null = draw the real value.
 const animA = atom({ plugin: 'hud', key: 'anim' } as const, { epct: null, pct: null })
+// Footer frame clock: the footer slot shows the SVG frozen, so it is redrawn ~7x a second.
+const frameA = atom({ plugin: 'hud', key: 'frame' } as const, 0)
+const FRAME_MS = 150
 
 const ANIM_MS = 40
 const ANIM_STEPS = 10
@@ -143,11 +146,12 @@ function strip(Box: any, Text: any, d: D) {
 }
 
 // Desktop: one rounded SVG strip; null on terminals (caller draws text pills).
-function svgEl($: Ctx, e: { surface: string }, d: D) {
+function svgEl($: Ctx, e: { surface: string }, d: D, frame?: number) {
   const ui = $.ui.resolve(e as never) as any
   if (e.surface === 'terminal' || !('Svg' in ui)) return null
   const { Svg } = ui
-  const s = svgStrip({ e: d.e, epct: d.an.epct, arr: d.arr, m: d.m, pct: d.an.pct, motion: d.motion })
+  const phase = frame === undefined ? undefined : (frame * FRAME_MS) / 1000
+  const s = svgStrip({ e: d.e, epct: d.an.epct, arr: d.arr, m: d.m, pct: d.an.pct, motion: d.motion, phase })
   return <Svg source={s.svg} alt={s.alt} width={s.w} height={22} />
 }
 
@@ -162,6 +166,11 @@ export const register: Register = on => {
       if (!started) {
         started = true
         $.clock.every(5000, () => void refresh($))
+        // Only ticks while the strip sits in the footer with motion on.
+        $.clock.every(FRAME_MS, () => void (async () => {
+          if ((await read($, placementA)) !== 'footer' || (await savedMotion($)) !== 'on') return
+          await update($, frameA, n => (n + 1) % 100_000)
+        })().catch(() => undefined))
       }
       await refresh($)
     } catch {
@@ -214,7 +223,7 @@ export const register: Register = on => {
       return (
         <Box>
           {e.props.modes.length ? <Text dimColor>{e.props.modes.join(' & ')}  </Text> : null}
-          {svgEl($, e, d) ?? strip(Box, Text, d)}
+          {svgEl($, e, d, await read($, frameA)) ?? strip(Box, Text, d)}
         </Box>
       )
     } catch {

@@ -152,13 +152,23 @@ export function stripText(e: EffortNow | null, arr: string, m: MemNow | null): s
 }
 
 // ---- Desktop SVG strip (rounded bars; terminals keep the text pills) ----
-export type SvgModel = { e: EffortNow | null; epct?: number | null; arr: string; m: MemNow | null; pct?: number | null; motion: boolean }
+// `phase` (seconds): draw one still frame of the animation at that moment instead of
+// in-image <animate> (the footer slot shows the image frozen, so it is redrawn in frames).
+export type SvgModel = { e: EffortNow | null; epct?: number | null; arr: string; m: MemNow | null; pct?: number | null; motion: boolean; phase?: number }
 
 const FONT = "-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif"
 const xml = (s: string): string => s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c] ?? c)
 const charEm = (ch: string): number => (/[\s.,:;'|!il1()[\]·]/.test(ch) ? 0.3 : /[A-Zmw@%+]/.test(ch) ? 0.72 : 0.56)
 const textWidth = (s: string, size: number): number => [...s].reduce((w, ch) => w + charEm(ch) * size, 0)
 const GRAD = { violet: ['#A78BFA', '#8B5CF6'], ok: ['#2DD4BF', '#14B8A6'], warn: ['#FBBF24', '#F59E0B'], critical: ['#F87171', '#EF4444'] } as const
+// One frame of a looping wave: `hi` at t = 0, `lo` half a period later.
+export const wave = (t: number, period: number, lo: number, hi: number): number =>
+  lo + (hi - lo) * (0.5 + 0.5 * Math.cos((2 * Math.PI * (((t % period) + period) % period)) / period))
+// The sweep's x at time t: crosses the track in the first 55% of a 4 s cycle, then waits.
+export const sweepX = (t: number, w: number): number => {
+  const u = (((t % 4) + 4) % 4) / 4
+  return u < 0.55 ? -40 + (w + 44) * (u / 0.55) : w + 4
+}
 const SW = 12 // pill height
 const CELL = 3 // dot grid
 const noise = (a: number, b: number): number => { const v = Math.sin(a * 127.1 + b * 311.7) * 43758.5453; return v - Math.floor(v) }
@@ -197,15 +207,24 @@ export function svgStrip(o: SvgModel): { svg: string; w: number; alt: string } {
     }
     const tw = [['2.2s', '0s'], ['2.8s', '0.7s'], ['1.9s', '1.3s'], ['3.3s', '0.4s']]
     const dots = groups
-      .map((g, i) => (g ? `<g class="t${i}">${g}${o.motion ? `<animate attributeName="opacity" values="1;0.25;1" dur="${tw[i]![0]}" begin="${tw[i]![1]}" repeatCount="indefinite"/>` : ''}</g>` : ''))
+      .map((g, i) => {
+        if (!g) return ''
+        const dur = parseFloat(tw[i]![0]!), begin = parseFloat(tw[i]![1]!)
+        if (o.motion && o.phase !== undefined) return `<g class="t${i}" opacity="${wave(o.phase - begin, dur, 0.25, 1).toFixed(2)}">${g}</g>`
+        return `<g class="t${i}">${g}${o.motion ? `<animate attributeName="opacity" values="1;0.25;1" dur="${tw[i]![0]}" begin="${tw[i]![1]}" repeatCount="indefinite"/>` : ''}</g>`
+      })
       .join('')
     const tagW = Math.round(16 + textWidth(label, FS - 1))
     const tx = Math.max(0, Math.min(w - tagW, fw - tagW))
     // A soft glow that breathes behind the tag, and a light sweep along the track.
-    const glow = o.motion
+    const glow = o.motion && o.phase !== undefined
+      ? `<rect x="${tx - 3}" y="-2" width="${tagW + 6}" height="${SW + 4}" rx="${(SW + 4) / 2}" fill="${color}" opacity="${(0.57 - wave(o.phase, 2.4, 0.12, 0.45)).toFixed(2)}"/>`
+      : o.motion
       ? `<rect x="${tx - 3}" y="-2" width="${tagW + 6}" height="${SW + 4}" rx="${(SW + 4) / 2}" fill="${color}" opacity="0.2"><animate attributeName="opacity" values="0.12;0.45;0.12" dur="2.4s" repeatCount="indefinite"/></rect>`
       : ''
-    const sweep = o.motion
+    const sweep = o.motion && o.phase !== undefined
+      ? `<rect x="${sweepX(o.phase, w).toFixed(1)}" width="36" height="${SW}" fill="url(#s${gid})"/>`
+      : o.motion
       ? `<rect x="-40" width="36" height="${SW}" fill="url(#s${gid})"><animate attributeName="x" values="-40;${w + 4};${w + 4}" keyTimes="0;0.55;1" dur="4s" repeatCount="indefinite"/></rect>`
       : ''
     defs.push(`<linearGradient id="s${gid}" x1="0" x2="1" y1="0" y2="0"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset="0.5" stop-color="#fff" stop-opacity="0.22"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>`)
