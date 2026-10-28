@@ -256,3 +256,21 @@ export function cleanCandidates(rows: TopRow[], ps: PsMap, home: string): { cand
   cands.sort((a, b) => b.mb - a.mb)
   return { cands: cands.slice(0, 4), excluded: [...out].map(([name, mb]) => ({ name, mb })).sort((a, b) => b.mb - a.mb) }
 }
+
+// A horizontal bar: `fill` drawn in the level color, `track` dim. Eighth blocks
+// make the edge smooth; the two parts always add up to `width` cells.
+export function bar(pct: number, width = 12): { fill: string; track: string } {
+  const p = Math.max(0, Math.min(100, Number.isFinite(pct) ? pct : 0))
+  const eighths = Math.round((p / 100) * width * 8)
+  const full = Math.floor(eighths / 8)
+  const part = eighths % 8
+  const fill = '█'.repeat(full) + (part ? ['', '▏', '▎', '▍', '▌', '▋', '▊', '▉'][part] : '')
+  return { fill, track: '░'.repeat(width - full - (part ? 1 : 0)) }
+}
+
+// The words after the bar: used %, free GB, swap %.
+export function barLabel(s: { swapTotalMB: number; swapUsedMB: number; freePct?: number; memTotalMB?: number }): string {
+  const swap = s.swapTotalMB > 0 ? ` · swap ${Math.round((s.swapUsedMB / s.swapTotalMB) * 100)}%` : ''
+  if (!s.memTotalMB || s.freePct === undefined) return `RAM ?${swap}`
+  return `${Math.round(100 - s.freePct)}% · ${g1((s.memTotalMB * s.freePct) / 100)}G free${swap}`
+}

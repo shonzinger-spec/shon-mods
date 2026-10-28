@@ -1,5 +1,5 @@
 import { expect, test } from 'claude-code/testing'
-import { alertText, classify, cleanCandidates, meterText, DEFAULT_CFG as cfg, groupUsage, levelOf, memReport, mergeCfg, parsePs, parseSysctl, parseTop, shouldAlert, statusText } from './lib.js'
+import { alertText, bar, barLabel, classify, cleanCandidates, meterText, DEFAULT_CFG as cfg, groupUsage, levelOf, memReport, mergeCfg, parsePs, parseSysctl, parseTop, shouldAlert, statusText } from './lib.js'
 
 const SW = 'total = 39936.00M  used = 38606.88M  free = 1329.12M  (encrypted)'
 
@@ -156,4 +156,14 @@ test('cleanCandidates: IDEs by name and prefix, Trading anywhere in ps, chat hos
   const { cands } = cleanCandidates(rows, ps, home)
   expect(cands.map(c => c.name)).toEqual(['Slack'])
   expect(cands[0]?.path).toBe('/Applications/Slack.app')
+})
+
+test('bar fills in eighths and always spans its width', () => {
+  expect(bar(0)).toEqual({ fill: '', track: '░'.repeat(12) })
+  expect(bar(100)).toEqual({ fill: '█'.repeat(12), track: '' })
+  expect(bar(50)).toEqual({ fill: '██████', track: '░░░░░░' })
+  expect(bar(71)).toEqual({ fill: '████████▌', track: '░░░' })
+  for (const p of [-5, 3, 33, 99.9, 140, NaN]) { const b = bar(p); expect([...b.fill].length + b.track.length).toBe(12) }
+  expect(barLabel({ swapTotalMB: 33800, swapUsedMB: 32900, freePct: 29, memTotalMB: 16384 })).toBe('71% · 4.8G free · swap 97%')
+  expect(barLabel({ swapTotalMB: 0, swapUsedMB: 0 })).toBe('RAM ?')
 })

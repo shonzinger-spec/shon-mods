@@ -1,7 +1,7 @@
 # memory-guard
 
 ## What it does
-Early warning for the 16 GB Mac running out of memory, plus a safe way to free some. Every 60 s one shell call reads macOS memory pressure, swap, total RAM and free-memory percentage (`sysctl` + `memory_pressure -Q`, about 10 ms). It shows `mem warn · swap 38.6/39.9G · Google Chrome 52G` in the status line and a colored meter `RAM 2.3G free (14%) · swap 37.1/37.9G` (green ok, yellow warn, red critical) at the right of the prompt footer. Level is warn at pressure "warn" or swap >= `swapWarnPct` (85), critical at pressure "critical" or swap >= `swapCriticalPct` (97). When the level rises, or stays above ok for `cooldownMin` minutes, it runs one scan, names the top users in a toast, and at critical also sends a notification. Alerts are shared across open chats through `state/alert.json`.
+Early warning for the 16 GB Mac running out of memory, plus a safe way to free some. Every 60 s one shell call reads macOS memory pressure, swap, total RAM and free-memory percentage (`sysctl` + `memory_pressure -Q`, about 10 ms). It shows `mem warn · swap 38.6/39.9G · Google Chrome 52G` in the status line and a 12-cell memory bar `RAM ████████▍░░░ 70% · 4.9G free · swap 97%` (RAM used; fill green ok, yellow warn, red critical, dim track) at the right of the prompt footer. Level is warn at pressure "warn" or swap >= `swapWarnPct` (85), critical at pressure "critical" or swap >= `swapCriticalPct` (97). When the level rises, or stays above ok for `cooldownMin` minutes, it runs one scan, names the top users in a toast, and at critical also sends a notification. Alerts are shared across open chats through `state/alert.json`.
 
 At warn or critical a band above the prompt lists the top 4 memory users from the last scan with two buttons: "Not now" (hides it until the level rises or `cooldownMin` passes) and "Let Claude clean it". It cannot hide macOS's own out-of-memory dialog.
 
@@ -23,7 +23,7 @@ At warn or critical a band above the prompt lists the top 4 memory users from th
 
 ## When it runs (hooks/events)
 - `session.start`: registers `/mem`, starts one 60-second timer per module load and an immediate first tick.
-- `ui.render` for `SessionMode`: the colored RAM/swap meter after the existing mode labels.
+- `ui.render` for `SessionMode`: the RAM bar (filled cells in the level color, dim track) with used %, free GB and swap % after the existing mode labels.
 - `ui.render` for `AbovePrompt`: the warn/critical band with the two buttons (skipped during a survey).
 - `command.run` for `mem`: the report, or the cleanup flow for `clean`.
 

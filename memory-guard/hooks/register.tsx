@@ -2,7 +2,7 @@ import { atom, read, update, type Hook, type Register } from 'claude-code'
 
 import type { MemSnap } from '../types'
 import {
-  alertText, cleanCandidates, groupUsage, levelOf, memReport, meterText, mergeCfg, parsePs, parseSysctl, parseTop, shouldAlert, statusText,
+  alertText, bar, barLabel, cleanCandidates, groupUsage, levelOf, memReport, meterText, mergeCfg, parsePs, parseSysctl, parseTop, shouldAlert, statusText,
   type Cfg, type Level,
 } from './lib'
 
@@ -210,7 +210,10 @@ export const register: Register = on => {
       return (
         <Box>
           {e.props.modes.length ? <Text dimColor>{e.props.modes.join(' & ')}  </Text> : null}
-          <Text color={COLOR[snap.level]}>{meterText(snap)}</Text>
+          <Text dimColor>RAM </Text>
+          <Text color={COLOR[snap.level]}>{bar(100 - (snap.freePct ?? 100)).fill}</Text>
+          <Text dimColor>{bar(100 - (snap.freePct ?? 100)).track}</Text>
+          <Text color={COLOR[snap.level]}> {barLabel(snap)}</Text>
         </Box>
       )
     } catch {
