@@ -1,1 +1,9 @@
-{ "name": "hud", "version": "0.0.0", "description": "placeholder; auto-publish fills this in" }
+{
+  "name": "hud",
+  "version": "0.1.1",
+  "author": {
+    "name": "Shon Zinger"
+  },
+  "description": "One clean strip: the effort level the router picked for this chat (updates live) next to the RAM bar. /hud place footer|band|hint|pane|off chooses where it sits and remembers it in every new chat.",
+  "types": "./types/index.d.ts"
+}
