@@ -125,3 +125,35 @@ test('cleanCandidates: apps only, exclusions, cap 4, sorted', () => {
   expect(cands[0]?.label).toBe('Google Chrome 52.0G (tabs restore on reopen)')
   expect(cands[1]?.label).toBe('Slack 3.0G')
 })
+
+test('cleanCandidates never offers an /Applications app started by a chat (MCP child)', () => {
+  const home = '/Users/x'
+  const ps = parsePs([
+    `4 1 ${CHAT}`,
+    '20 4 /Applications/Google Chrome.app/Contents/MacOS/Google Chrome --remote-debugging-port=9222',
+    '21 1 /Applications/Slack.app/Contents/MacOS/Slack',
+  ].join('\n'))
+  const { cands, excluded } = cleanCandidates([{ pid: 20, ppid: 4, mb: 9000 }, { pid: 21, ppid: 1, mb: 100 }], ps, home)
+  expect(cands.map(c => c.name)).toEqual(['Slack'])
+  expect(excluded.map(e => e.name)).toContain('Claude chats + MCP servers')
+})
+
+test('cleanCandidates: IDEs by name and prefix, Trading anywhere in ps, chat hosts are never offered', () => {
+  const home = '/Users/x'
+  const lines = [
+    '1 0 /sbin/launchd',
+    '30 1 /Applications/Antigravity.app/Contents/MacOS/Electron',
+    '31 1 /Applications/Devin.app/Contents/MacOS/Devin',
+    '32 1 /Applications/Foo.app/Contents/MacOS/Foo',
+    '33 32 /Applications/Foo.app/Contents/Frameworks/Helper.app/Contents/MacOS/Helper --data /Users/x/Trading/db',
+    '34 1 /Applications/Host.app/Contents/MacOS/Host',
+    `35 34 ${CHAT}`,
+    '36 1 /Applications/Slack.app/Contents/MacOS/Slack',
+  ]
+  const ps = parsePs(lines.join('\n'))
+  // Only main processes are in the top rows; pid 33 (the Trading helper) is not.
+  const rows = [30, 31, 32, 34, 36].map(pid => ({ pid, ppid: 1, mb: 1000 + pid }))
+  const { cands } = cleanCandidates(rows, ps, home)
+  expect(cands.map(c => c.name)).toEqual(['Slack'])
+  expect(cands[0]?.path).toBe('/Applications/Slack.app')
+})

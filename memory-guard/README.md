@@ -12,7 +12,7 @@ At warn or critical a band above the prompt lists the top 4 memory users from th
 
 ## Safety rules for cleanup
 - Only apps whose bundle is under `/Applications/` or `~/Applications/` can be offered (so launchd jobs, python, node, `/System` and `/Library` bundles never are). At most 4, largest first. Chrome is labeled "(tabs restore on reopen)".
-- Never offered: Claude (desktop), any claude chat or its MCP servers, Terminal, iTerm, iTerm2, Ghostty, Warp, kitty, Alacritty, WezTerm, Visual Studio Code, Cursor, Codex, Antigravity IDE, Finder, Dock, SystemUIServer, ControlCenter, loginwindow, TradingView, and any app with a process whose command contains `~/Trading`.
+- Never offered: Claude (desktop), any claude chat or its MCP servers, any app that hosts a chat or has a process started by one, any app with any process whose command contains `~/Trading`, TradingView, terminals (Terminal, iTerm, iTerm2, Ghostty, Warp, kitty, Alacritty, WezTerm, Hyper, Tabby), editors and agent apps (Visual Studio Code, Cursor, Codex, Antigravity, Devin, OpenCode, Atlarix, Amp, Zed, Windsurf, Xcode, Android Studio, JetBrains IDEs, Sublime Text, Nova, BBEdit), Finder, Dock, SystemUIServer, ControlCenter, loginwindow, and anything outside `/Applications` or `~/Applications`. Apps are quit by their exact bundle path with AppleScript `quit`, so each can ask to save; an app that doesn't answer in 20 s is logged and skipped.
 - Two explicit answers are needed (pick, then "Quit them"); anything that is not an exact label is ignored. Candidates are re-scanned right before quitting, and names must match `[A-Za-z0-9 .()&+_-]`.
 - Graceful quit only: no kill signals, no sudo, no purge.
 

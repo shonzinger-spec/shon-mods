@@ -204,33 +204,54 @@ export function meterText(s: { swapTotalMB: number; swapUsedMB: number; freePct?
   return `RAM ${g1((s.memTotalMB * pct) / 100)}G free (${Math.round(pct)}%) · ${swap}`
 }
 
-// Apps never offered for quitting, compared lowercase.
+// Apps never offered for quitting, compared lowercase: exact names, then name prefixes.
 const NEVER = new Set([
-  'claude', 'terminal', 'iterm', 'iterm2', 'ghostty', 'warp', 'kitty', 'alacritty', 'wezterm', 'visual studio code', 'cursor', 'codex',
-  'antigravity ide', 'finder', 'dock', 'systemuiserver', 'controlcenter', 'loginwindow', 'tradingview',
+  'claude', 'terminal', 'iterm', 'iterm2', 'ghostty', 'warp', 'kitty', 'alacritty', 'wezterm', 'hyper', 'tabby',
+  'visual studio code', 'cursor', 'codex', 'antigravity', 'antigravity ide', 'devin', 'opencode', 'atlarix', 'amp',
+  'zed', 'windsurf', 'xcode', 'android studio', 'sublime text', 'nova', 'bbedit',
+  'finder', 'dock', 'systemuiserver', 'controlcenter', 'loginwindow', 'tradingview',
 ])
+const NEVER_PREFIX = ['claude', 'antigravity', 'visual studio code', 'cursor', 'codex', 'devin', 'opencode', 'atlarix', 'iterm', 'intellij', 'pycharm', 'webstorm', 'goland', 'tradingview']
+const isNever = (name: string) => { const n = name.toLowerCase(); return NEVER.has(n) || NEVER_PREFIX.some(x => n.startsWith(x)) }
 
-export type Candidate = { name: string; mb: number; label: string }
+export type Candidate = { name: string; mb: number; label: string; path: string }
 
 export function cleanCandidates(rows: TopRow[], ps: PsMap, home: string): { cands: Candidate[]; excluded: { name: string; mb: number }[] } {
   const roots = ['/Applications/', `${home}/Applications/`]
   const apps = new Map<string, number>()
   const out = new Map<string, number>()
   const skip = new Set<string>()
+  const paths = new Map<string, string>()
   const drop = (name: string, mb: number) => out.set(name, (out.get(name) ?? 0) + mb)
+  const bundleOf = (cmd: string) => /^(\/.*?\/([^/]+)\.app)\/Contents\//.exec(cmd)
+  // Taint whole apps from every process, not only the top rows: an app with any
+  // process that touches ~/Trading, runs under a chat (MCP), or hosts a chat.
+  const hosts = new Set<number>()
+  for (const [pid, p] of ps) {
+    if (classify(pid, ps).kind !== 'chat') continue
+    let q = p.ppid
+    for (let i = 0; i < 50 && q > 1 && ps.has(q); i++) { hosts.add(q); q = ps.get(q)?.ppid ?? 0 }
+  }
+  for (const [pid, p] of ps) {
+    const app = bundleOf(p.command)?.[2]
+    if (!app) continue
+    const k = classify(pid, ps).kind
+    if (p.command.includes(`${home}/Trading`) || k === 'chat' || k === 'mcp' || hosts.has(pid)) skip.add(app)
+  }
   for (const r of rows) {
     const cmd = ps.get(r.pid)?.command ?? ''
     const k = classify(r.pid, ps).kind
     if (k === 'chat' || k === 'mcp') { drop('Claude chats + MCP servers', r.mb); continue }
-    const app = /^\/.*?\/([^/]+)\.app\//.exec(cmd)?.[1]
+    const bm = bundleOf(cmd)
+    const app = bm?.[2]
     if (!app || !roots.some(x => cmd.startsWith(x))) { drop('processes outside /Applications', r.mb); continue }
-    if (cmd.includes(`${home}/Trading`)) skip.add(app)
     apps.set(app, (apps.get(app) ?? 0) + r.mb)
+    if (bm?.[1] && !paths.has(app)) paths.set(app, bm[1])
   }
   const cands: Candidate[] = []
   for (const [name, mb] of apps) {
-    if (NEVER.has(name.toLowerCase()) || skip.has(name)) { drop(name, mb); continue }
-    cands.push({ name, mb, label: `${name} ${g1(mb)}G${name === 'Google Chrome' ? ' (tabs restore on reopen)' : ''}` })
+    if (isNever(name) || skip.has(name)) { drop(name, mb); continue }
+    cands.push({ name, mb, path: paths.get(name) ?? '', label: `${name} ${g1(mb)}G${name === 'Google Chrome' ? ' (tabs restore on reopen)' : ''}` })
   }
   cands.sort((a, b) => b.mb - a.mb)
   return { cands: cands.slice(0, 4), excluded: [...out].map(([name, mb]) => ({ name, mb })).sort((a, b) => b.mb - a.mb) }

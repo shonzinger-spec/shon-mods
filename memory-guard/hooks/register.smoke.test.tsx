@@ -17,7 +17,7 @@ const wait = async (f: () => boolean) => {
 
 type On = (ev: string, fn: (_: unknown, e: any) => unknown) => void
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function wire(on: On, alertJson: string, toasts: string[], spy?: (e: { argv: string[]; init?: { stdin?: string } }) => void) {
+function wire(on: On, alertJson: string, toasts: string[], spy?: (e: { argv: string[]; init?: { stdin?: string } }) => void, ps = PS) {
   on('env.get', () => ({ value: '/home/t' }))
   on('clock.now', () => ({ value: 1_000_000 }))
   on('fs.read', (_: unknown, e: unknown) => ({ value: (e as { path: string }).path.endsWith('alert.json') ? alertJson : '' }))
@@ -29,7 +29,7 @@ function wire(on: On, alertJson: string, toasts: string[], spy?: (e: { argv: str
   on('process.run', (_, e) => {
     spy?.(e as { argv: string[]; init?: { stdin?: string } })
     const argv = (e as { argv: string[] }).argv
-    return ok(argv[0] === '/bin/sh' && (argv[2] ?? '').includes('sysctl') ? SYS : argv[0] === 'top' ? TOP : argv[0] === 'ps' ? PS : '')
+    return ok(argv[0] === '/bin/sh' && (argv[2] ?? '').includes('sysctl') ? SYS : argv[0] === 'top' ? TOP : argv[0] === 'ps' ? ps : '')
   })
 }
 
@@ -98,7 +98,7 @@ test('/mem clean --dry-run lists Slack, quits nothing, logs one dry-run row', as
 test('/mem clean: pick Slack then Quit them runs exactly one osascript', async ($, on) => {
   const { osa, rows } = cleanWire(on, ['Slack 3.0G', 'Quit them'])
   await $.command.run({ command: 'mem', args: 'clean', ...RUN })
-  expect(osa).toEqual([['osascript', '-e', 'tell application "Slack" to quit']])
+  expect(osa).toEqual([['osascript', '-e', 'tell application "/Applications/Slack.app" to quit']])
   expect(rows.map(x => x.action)).toContain('quit')
 })
 
@@ -118,4 +118,49 @@ test('SessionMode draws the RAM meter once a snap exists', async ($, on) => {
   const ui = await $.ui.mount({ plugin: 'memory-guard', surface: 'terminal', component: 'SessionMode', props: { modes: ['plan'] } })
   expect(await ui.find({ type: 'Text', text: /RAM/ })).toBeDefined()
   await ui.unmount()
+})
+
+test('band: Not now hides it; Let Claude clean it picks, confirms and quits one app', async ($, on) => {
+  on('command.register', () => ({ value: { command: 'x' } }))
+  on('session.start', (_, e) => ({ cwd: e.cwd }))
+  const { osa } = cleanWire(on, ['Slack 3.0G', 'Quit them'])
+  // Stands for the engine beneath the mod: what shows when the band passes.
+  on('ui.render', ($, e) => { const { Text } = $.ui.resolve(e as never) as any; return <Text>engine</Text> })
+  await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
+  const BAND = { plugin: 'memory-guard', surface: 'terminal', component: 'AbovePrompt', props: { hasSurvey: false } } as unknown as Parameters<typeof $.ui.mount>[0]
+  let ui = await $.ui.mount(BAND)
+  for (let i = 0; i < 20 && !(await ui.find({ type: 'Text', text: /Memory (warn|critical)/ })); i++) {
+    await ui.unmount()
+    await new Promise(r => setTimeout(r, 100))
+    ui = await $.ui.mount(BAND)
+  }
+  expect(await ui.find({ type: 'Text', text: /Memory (warn|critical)/ })).toBeDefined()
+  await ui.press({ key: 'clean' })
+  expect(osa).toEqual([['osascript', '-e', 'tell application "/Applications/Slack.app" to quit']])
+  await ui.press({ key: 'later' })
+  await ui.unmount()
+  ui = await $.ui.mount(BAND)
+  expect(await ui.find({ type: 'Text', text: /Memory (warn|critical)/ })).toBeUndefined()
+  expect((await ui.find({ type: 'Text', text: /engine/ }))?.text).toBe('engine')
+  await ui.unmount()
+})
+
+test('/mem clean: a single candidate still gets 2+ options, and a hung quit is logged and survived', async ($, on) => {
+  const opts: string[][] = []
+  const rows: any[] = []
+  const answers = ['Slack 3.0G', 'Quit them']
+  wire(on, '', [], e => {
+    if (e.argv[0] === '/bin/sh' && (e.argv[2] ?? '').includes('cat >>') && (e.argv[4] ?? '').endsWith('actions.jsonl')) rows.push(JSON.parse(e.init?.stdin ?? '{}'))
+    if (e.argv[0] === 'osascript') throw new Error('timed out')
+  }, '400 1 /Applications/Slack.app/Contents/MacOS/Slack\n') // only Slack runs: exactly one candidate
+  on('tool.call', (_, e) => {
+    const q = e as { tool: string; questions: { question: string; options: { label: string }[] }[] }
+    opts.push((q.questions[0]?.options ?? []).map(o => o.label))
+    const a = answers.shift() ?? ''
+    return { result: { questions: q.questions, answers: { [q.questions[0]?.question ?? '']: a } }, text: a }
+  })
+  const r = await $.command.run({ command: 'mem', args: 'clean', ...RUN })
+  expect(opts.every(o => o.length >= 2)).toBe(true)
+  expect(JSON.stringify(r)).toContain('no answer')
+  expect(rows.some(x => x.action === 'quit' && x.exitCode === null)).toBe(true)
 })

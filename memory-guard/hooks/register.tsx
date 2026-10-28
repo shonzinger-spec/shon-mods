@@ -12,6 +12,7 @@ const dismissedA = atom({ plugin: 'memory-guard', key: 'dismissed' } as const, n
 const RANK = { ok: 0, warn: 1, critical: 2 }
 const COLOR = { ok: 'green', warn: 'yellow', critical: 'red' } as const
 const SAFE_NAME = /^[A-Za-z0-9 .()&+_-]+$/
+const SAFE_PATH = /^\/[^"\\]+\.app$/
 
 let started = false
 
@@ -85,7 +86,8 @@ async function cleanFlow($: Ctx, dryRun: boolean): Promise<string> {
   }
   let chosen: typeof cands = []
   try {
-    chosen = await picked(await $.ui.ask('Which apps should Claude quit to free memory?', { options: cands.map(c => c.label), header: 'Clean up', multiSelect: true }))
+    const options = cands.length >= 2 ? cands.map(c => c.label) : [...cands.map(c => c.label), 'None']
+    chosen = await picked(await $.ui.ask('Which apps should Claude quit to free memory?', { options, header: 'Clean up', multiSelect: true }))
   } catch {
     chosen = []
   }
@@ -105,17 +107,23 @@ async function cleanFlow($: Ctx, dryRun: boolean): Promise<string> {
     return 'Cancelled; nothing quit.'
   }
   const fresh = await scan($).catch(() => null)
-  const still = new Set(fresh ? cleanCandidates(fresh.rows, fresh.ps, home).cands.map(c => c.name) : [])
+  const still = new Map((fresh ? cleanCandidates(fresh.rows, fresh.ps, home).cands : []).map(c => [c.name, c.path] as const))
   const lines: string[] = []
   for (const c of chosen) {
-    if (!SAFE_NAME.test(c.name) || !still.has(c.name)) {
+    const path = still.get(c.name) ?? ''
+    if (!SAFE_NAME.test(c.name) || !SAFE_PATH.test(path) || path !== c.path) {
       await log('cancelled', c.name, c.mb, { stderr: 'skipped: unsafe name or no longer a candidate' })
       lines.push(`${c.name}: skipped`)
       continue
     }
-    const r = await $.process.run(['osascript', '-e', `tell application "${c.name}" to quit`], { timeoutMs: 20_000 })
-    await log('quit', c.name, c.mb, { exitCode: r.exitCode, stderr: r.stderr.slice(0, 300) })
-    lines.push(`${c.name}: ${r.exitCode === 0 ? 'quit asked' : 'failed'}`)
+    try {
+      const r = await $.process.run(['osascript', '-e', `tell application "${path}" to quit`], { timeoutMs: 20_000 })
+      await log('quit', c.name, c.mb, { exitCode: r.exitCode, stderr: r.stderr.slice(0, 300) })
+      lines.push(`${c.name}: ${r.exitCode === 0 ? 'quit asked' : 'failed'}`)
+    } catch (err) {
+      await log('quit', c.name, c.mb, { exitCode: null, stderr: `no answer: ${String(err).slice(0, 200)}` })
+      lines.push(`${c.name}: no answer (it may be showing a save dialog)`)
+    }
   }
   return lines.join('\n')
 }
@@ -222,13 +230,13 @@ export const register: Register = on => {
       const color = COLOR[level]
       return (
         <Box flexDirection="column">
-          <Text color={color}>Memory {level}: {meterText(snap)}</Text>
-          {(snap.top ?? []).slice(0, 4).map(t => <Text key={t.name} color={color}>  {(t.mb / 1000).toFixed(1)}G  {t.name}</Text>)}
           <Box>
             <Button key="later" label="Not now" onPress={async () => { const at = await $.clock.now(); await update($, dismissedA, () => ({ level, at })) }} />
             <Text> </Text>
-            <Button key="clean" label="Let Claude clean it" onPress={async () => { $.ui.toast(await cleanFlow($, false).catch(err => `memory-guard: ${String(err)}`), { timeoutMs: 15_000 }) }} />
+            <Button key="clean" label="Let Claude clean it" onPress={async () => { try { $.ui.toast(await cleanFlow($, false).catch(err => `memory-guard: ${String(err)}`), { timeoutMs: 15_000 }) } catch { /* surface gone */ } }} />
+            <Text color={color}>  Memory {level}: {meterText(snap)}</Text>
           </Box>
+          {(snap.top ?? []).length ? <Text color={color}>Top: {(snap.top ?? []).slice(0, 4).map(t => `${t.name} ${(t.mb / 1000).toFixed(1)}G`).join(', ')}</Text> : null}
         </Box>
       )
     } catch {
