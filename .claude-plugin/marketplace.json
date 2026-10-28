@@ -124,6 +124,11 @@
       "name": "usage-coach",
       "source": "./usage-coach",
       "description": "Weekly-limit coach: status line, pace band, /budget, /next and a task queue with measured cost per task"
+    },
+    {
+      "name": "memory-guard",
+      "source": "./memory-guard",
+      "description": "Memory meter in the prompt footer, warn/critical band with Not now / Let Claude clean it (graceful quit only, after a confirm), /mem lists top users by app, chat and MCP server"
     }
   ]
 }

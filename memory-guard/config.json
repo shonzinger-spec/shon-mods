@@ -1,0 +1,1 @@
+{ "intervalSec": 60, "swapWarnPct": 85, "swapCriticalPct": 97, "cooldownMin": 30 }

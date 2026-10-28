@@ -1,0 +1,9 @@
+{
+  "name": "memory-guard",
+  "version": "0.1.0",
+  "author": {
+    "name": "shon"
+  },
+  "description": "Memory early-warning: status line \"mem warn · swap 38.6/39.9G · Google Chrome 52G\", a toast (and at critical a notification and red band) when macOS memory pressure or swap rises, and /mem to list the top memory users incl. Claude chats and their MCP servers. Informs only; never kills or changes anything.",
+  "types": "./types/index.d.ts"
+}
