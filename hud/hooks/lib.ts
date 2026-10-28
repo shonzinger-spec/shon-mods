@@ -150,3 +150,91 @@ export function stripText(e: EffortNow | null, arr: string, m: MemNow | null): s
   }
   return parts.join(' · ')
 }
+
+// ---- Desktop SVG strip (rounded bars; terminals keep the text pills) ----
+export type SvgModel = { e: EffortNow | null; epct?: number | null; arr: string; m: MemNow | null; pct?: number | null; motion: boolean }
+
+const FONT = "-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif"
+const xml = (s: string): string => s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c] ?? c)
+const charEm = (ch: string): number => (/[\s.,:;'|!il1()[\]·]/.test(ch) ? 0.3 : /[A-Zmw@%+]/.test(ch) ? 0.72 : 0.56)
+const textWidth = (s: string, size: number): number => [...s].reduce((w, ch) => w + charEm(ch) * size, 0)
+const GRAD = { violet: ['#A78BFA', '#7C3AED'], ok: ['#2DD4BF', '#0D9488'], warn: ['#FBBF24', '#D97706'], critical: ['#F87171', '#DC2626'] } as const
+const SW = 14 // pill height
+const SH = 22 // strip height
+const FS = 11
+
+// The strip as one SVG; `w`/`alt` are what the Svg element needs.
+export function svgStrip(o: SvgModel): { svg: string; w: number; alt: string } {
+  const parts: string[] = []
+  const defs: string[] = []
+  const alts: string[] = []
+  let x = 0
+  const y = SH / 2 + 4
+  const text = (s: string, cls: string, extra = '') => {
+    parts.push(`<text class="${cls}" x="${x}" y="${y}" font-family="${FONT}" font-size="${FS}"${extra}>${xml(s)}</text>`)
+    x += textWidth(s, FS)
+  }
+  const bar = (id: string, w: number, pct: number, kind: keyof typeof GRAD, label: string) => {
+    const p = Math.max(0, Math.min(100, Number.isFinite(pct) ? pct : 0))
+    const fw = (p / 100) * w
+    const [a, b] = GRAD[kind]
+    const y0 = (SH - SW) / 2
+    const gid = `${id}-${kind}`
+    defs.push(`<linearGradient id="g${gid}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${a}"/><stop offset="1" stop-color="${b}"/></linearGradient>`)
+    defs.push(`<clipPath id="c${gid}"><rect width="${w}" height="${SW}" rx="${SW / 2}"/></clipPath>`)
+    const shine = o.motion ? `<polygon class="sh" points="-25,0 -5,0 -10,${SW} -30,${SW}" fill="#fff" opacity="0.25"><animateTransform attributeName="transform" type="translate" values="0 0;${Math.round(w + 40)} 0;${Math.round(w + 40)} 0" keyTimes="0;0.6;1" dur="3.5s" repeatCount="indefinite"/></polygon>` : ''
+    parts.push(
+      `<g transform="translate(${x},${y0})"><rect class="k" width="${w}" height="${SW}" rx="${SW / 2}"/>` +
+        `<g clip-path="url(#c${gid})"><rect width="${fw > 0 ? Math.max(fw, SW) : 0}" height="${SW}" rx="${SW / 2}" fill="url(#g${gid})"/>${shine}</g>` +
+        `<rect x="0.5" y="0.5" width="${w - 1}" height="${SW - 1}" rx="${(SW - 1) / 2}" fill="none" stroke="${b}" stroke-opacity="0.55" stroke-width="1"/>` +
+        `<text x="${w / 2}" y="${SW / 2 + 4}" text-anchor="middle" font-family="${FONT}" font-size="${FS}" font-weight="600" fill="#fff" stroke="rgba(0,0,0,0.35)" stroke-width="2" paint-order="stroke">${xml(label)}</text></g>`,
+    )
+    x += w
+  }
+  if (o.e) {
+    text('effort', 'm')
+    x += 6
+    bar('e', 96, o.epct ?? effortPct(o.e.level), 'violet', o.e.level)
+    const tail = `${o.arr ? ` ${o.arr.trim()}` : ''} ${sourceText(o.e.source)}`
+    parts.push(`<text class="m" x="${x}" y="${y}" font-family="${FONT}" font-size="${FS}" xml:space="preserve">${xml(tail)}</text>`)
+    x += textWidth(tail, FS)
+    if (o.e.ultracode) text(' + team', '', ` fill="${EFFORT_FILL}"`)
+    alts.push(`effort ${o.e.level}`)
+  }
+  if (o.e && o.m) x += 14
+  if (o.m) {
+    const m = o.m
+    const used = o.pct ?? usedPct(m)
+    const free = freeGB(m)
+    const sw = swapPct(m)
+    text('ram', 'm')
+    x += 6
+    bar('m', 140, used ?? 0, m.level, used === undefined ? '?' : `${Math.round(used)}%`)
+    if (free) {
+      x += 6
+      text(`${free}G free`, 'm')
+    }
+    if (sw !== null) {
+      x += 6
+      if (free) {
+        text('·', 'm')
+        x += 6
+      }
+      text('swap ', 'm')
+      const c = swapColor(sw)
+      text(`${sw}%`, c ? '' : 'm', c ? ` fill="${c}"` : '')
+    }
+    alts.push(`ram ${used === undefined ? 'unknown' : `${Math.round(used)}% used`}`)
+    if (sw !== null) alts.push(`swap ${sw}%`)
+  }
+  const w = Math.min(900, Math.ceil(x) + 2)
+  const css =
+    '.m{fill:#8a8a8a}.k{fill:#e4e4e2}@media (prefers-color-scheme: dark){.m{fill:#9a9a9a}.k{fill:#2c2c2c}}' +
+    (o.motion
+      ? '@media (prefers-reduced-motion: reduce){.sh{display:none}}'
+      : '')
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${SH}" viewBox="0 0 ${w} ${SH}"><style>${css}</style><defs>${defs.join('')}</defs>${parts.join('')}</svg>`
+  return { svg, w, alt: alts.join(', ') }
+}
+
+export const stripSvg = (o: SvgModel): string => svgStrip(o).svg

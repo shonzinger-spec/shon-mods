@@ -11,6 +11,9 @@ Two sleek pill progress bars: the effort level the effort-router picked for this
 - `hint` placement is plain text: `effort ▰▰▰▱▱ high · ram 69% · swap 98%`.
 - Motion, only on a change: both fills glide to the new value (10 frames, 40 ms apart). `/hud motion off|on` (saved) turns it off; nothing runs while idle.
 
+## Desktop rendering
+On desktop (any surface with `Svg`) the strip is one SVG with truly rounded pills: 96 px effort pill (violet gradient), 140 px RAM pill (teal / amber / red gradient), a soft highlight sweeping each fill every 3.5 s. The sweep is off under reduced-motion and with `/hud motion off`. Terminals keep the text pills above; `hint` stays plain text.
+
 ## Commands it adds
 - `/hud`: shows where the strip sits, whether motion is on, and the one-line help.
 - `/hud motion <on|off>`: toggles the change animations (default on).

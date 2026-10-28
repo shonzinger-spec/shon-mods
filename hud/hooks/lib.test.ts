@@ -110,3 +110,28 @@ test('runAnim stop cancels once; no frames starts no timer', () => {
   runAnim(every, 80, [], () => undefined, () => done++)
   expect([made, done]).toEqual([1, 1])
 })
+
+import { stripSvg, svgStrip } from './lib.js'
+const SE = { level: 'high', ultracode: false, reason: '', source: 'auto' as const, at: 1 }
+const SM = { level: 'ok' as const, freePct: 31, memTotalMB: 16384, swapUsedMB: 98, swapTotalMB: 100, at: 1 }
+
+test('stripSvg: rounded tracks, gradients, labels, motion css', () => {
+  const s = stripSvg({ e: SE, arr: '', m: SM, motion: true })
+  expect((s.match(/class="k"[^>]*rx="7"/g) ?? []).length).toBe(2)
+  expect(s).toContain('#A78BFA')
+  expect(s).toContain('#2DD4BF')
+  expect(s).toContain('>effort<')
+  expect(s).toContain('>ram<')
+  expect(s).toContain('>69%<')
+  expect(s).toContain('prefers-reduced-motion')
+  expect(svgStrip({ e: SE, arr: '', m: SM, motion: true }).w).toBeLessThanOrEqual(900)
+})
+
+test('stripSvg: motion off drops animation, critical is red, text escaped', () => {
+  const s = stripSvg({ e: { ...SE, level: 'a<b&c>' }, arr: '', m: { ...SM, level: 'critical' }, motion: false })
+  expect(s).not.toContain('prefers-reduced-motion')
+  expect(s).not.toContain('@keyframes')
+  expect(s).toContain('#F87171')
+  expect(s).toContain('a&lt;b&amp;c&gt;')
+  expect(stripSvg({ e: SE, arr: '', m: null, motion: true })).not.toContain('>ram<')
+})

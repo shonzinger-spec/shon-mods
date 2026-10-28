@@ -3,7 +3,7 @@ import { atom, read, update, type Hook, type Register } from 'claude-code'
 import type { EffortNow, MemNow, Trend } from '../types'
 import {
   arrow, EFFORT_FILL, EFFORT_TRACK, effortPct, freeGB, isPlacement, MEM_COLOR, MEM_FILL, MEM_TRACK, parseEffort, parseMem, pill, PLACEMENTS,
-  runAnim, sourceText, stale, stripText, swapColor, swapPct, tween, usedPct,
+  runAnim, sourceText, stale, stripText, svgStrip, swapColor, swapPct, tween, usedPct,
   type Placement,
 } from './lib'
 
@@ -104,7 +104,7 @@ async function data($: Ctx) {
   if (!e && !m) return null
   const t = await read($, trendA)
   const an = await read($, animA)
-  return { e, m, arr: e ? arrow(t.prev, t.level, t.since, now) : '', an }
+  return { e, m, arr: e ? arrow(t.prev, t.level, t.since, now) : '', an, motion: (await savedMotion($)) === 'on' }
 }
 
 type D = NonNullable<Awaited<ReturnType<typeof data>>>
@@ -140,6 +140,15 @@ function strip(Box: any, Text: any, d: D) {
       ) : null}
     </Box>
   )
+}
+
+// Desktop: one rounded SVG strip; null on terminals (caller draws text pills).
+function svgEl($: Ctx, e: { surface: string }, d: D) {
+  const ui = $.ui.resolve(e as never) as any
+  if (e.surface === 'terminal' || !('Svg' in ui)) return null
+  const { Svg } = ui
+  const s = svgStrip({ e: d.e, epct: d.an.epct, arr: d.arr, m: d.m, pct: d.an.pct, motion: d.motion })
+  return <Svg source={s.svg} alt={s.alt} width={s.w} height={22} />
 }
 
 const HELP = 'Pick where the strip sits: /hud place <footer|band|hint|pane|off>; animations: /hud motion <on|off>. Dragging is not possible: Claude only draws mods in fixed slots.'
@@ -205,7 +214,7 @@ export const register: Register = on => {
       return (
         <Box>
           {e.props.modes.length ? <Text dimColor>{e.props.modes.join(' & ')}  </Text> : null}
-          {strip(Box, Text, d)}
+          {svgEl($, e, d) ?? strip(Box, Text, d)}
         </Box>
       )
     } catch {
@@ -219,7 +228,7 @@ export const register: Register = on => {
       const d = await data($)
       if (!d) return next(e)
       const { Box, Text } = $.ui.resolve(e)
-      return strip(Box, Text, d)
+      return svgEl($, e, d) ?? strip(Box, Text, d)
     } catch {
       return next(e)
     }
@@ -243,7 +252,7 @@ export const register: Register = on => {
       const { Box, Text } = $.ui.resolve(e)
       return (
         <Box borderStyle="round" borderColor={d.m ? MEM_COLOR[d.m.level] : undefined} paddingX={1}>
-          {strip(Box, Text, d)}
+          {svgEl($, e, d) ?? strip(Box, Text, d)}
         </Box>
       )
     } catch {

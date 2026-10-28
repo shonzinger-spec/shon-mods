@@ -140,3 +140,18 @@ test('/hud motion off draws the final value at once and shows in /hud', async ($
   void clock
   await ui.unmount()
 })
+
+test('desktop footer draws one Svg strip; terminal keeps text pills', async ($, on) => {
+  wire(on, FILES)
+  await $.session.start(START)
+  const ui = await $.ui.mount({ ...FOOTER, surface: 'desktop' })
+  const svg = await ui.find({ type: 'Svg' })
+  expect(svg).toBeDefined()
+  expect(String(svg?.props.source)).toContain('high')
+  expect(String(svg?.props.source)).toContain('69%')
+  await ui.unmount()
+  const t = await $.ui.mount(FOOTER)
+  expect(await t.find({ type: 'Svg' })).toBeUndefined()
+  expect(await t.find({ type: 'Text', text: /ram/ })).toBeDefined()
+  await t.unmount()
+})
