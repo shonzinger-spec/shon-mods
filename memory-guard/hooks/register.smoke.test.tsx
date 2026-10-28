@@ -1,4 +1,4 @@
-import { expect, test } from 'claude-code/testing'
+import { expect, mock, test } from 'claude-code/testing'
 
 const SYS = '2\ntotal = 39936.00M  used = 38606.88M  free = 1329.12M  (encrypted)\n17179869184\nThe system has 17179869184 (1048576 pages).\nSystem-wide memory free percentage: 14%\n'
 const TOP = 'Processes: 9\n\nPID PPID MEM\n300 1 52000M\n400 1 3000M\n401 1 900M\n600 1 400M\n601 600 700M\n'
@@ -17,9 +17,9 @@ const wait = async (f: () => boolean) => {
 
 type On = (ev: string, fn: (_: unknown, e: any) => unknown) => void
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function wire(on: On, alertJson: string, toasts: string[], spy?: (e: { argv: string[]; init?: { stdin?: string } }) => void, ps = PS) {
+function wire(on: On, alertJson: string, toasts: string[], spy?: (e: { argv: string[]; init?: { stdin?: string } }) => void, ps = PS, ownClock = true) {
   on('env.get', () => ({ value: '/home/t' }))
-  on('clock.now', () => ({ value: 1_000_000 }))
+  if (ownClock) on('clock.now', () => ({ value: 1_000_000 }))
   on('fs.read', (_: unknown, e: unknown) => ({ value: (e as { path: string }).path.endsWith('alert.json') ? alertJson : '' }))
   on('fs.write', () => ({ value: undefined }))
   on('ui.toast', (_, e) => {
@@ -69,13 +69,13 @@ test('/mem lists Google Chrome', async ($, on) => {
 const RUN = { origin: { kind: 'composer' }, presentation: { isFullscreen: false, columns: 80 } } as const
 
 // Records osascript calls and actions.jsonl rows; ask answers come from `answers` in order.
-function cleanWire(on: On, answers: string[]) {
+function cleanWire(on: On, answers: string[], ownClock = true) {
   const osa: string[][] = []
   const rows: any[] = []
   wire(on, '', [], e => {
     if (e.argv[0] === 'osascript') osa.push(e.argv)
     if (e.argv[0] === '/bin/sh' && (e.argv[2] ?? '').includes('cat >>') && (e.argv[4] ?? '').endsWith('actions.jsonl')) rows.push(JSON.parse(e.init?.stdin ?? '{}'))
-  })
+  }, PS, ownClock)
   // $.ui.ask is a tool.call of AskUserQuestion; answer it from the queue.
   on('tool.call', (_, e) => {
     const q = e as { tool: string; questions: { question: string }[] }
@@ -112,7 +112,8 @@ test('/mem clean: Cancel quits nothing', async ($, on) => {
 test('band: Not now hides it; Let Claude clean it picks, confirms and quits one app', async ($, on) => {
   on('command.register', () => ({ value: { command: 'x' } }))
   on('session.start', (_, e) => ({ cwd: e.cwd }))
-  const { osa } = cleanWire(on, ['Slack 3.0G', 'Quit them'])
+  const clock = mock.clock(on, { now: 1_000_000 })
+  const { osa } = cleanWire(on, ['Slack 3.0G', 'Quit them'], false)
   // Stands for the engine beneath the mod: what shows when the band passes.
   on('ui.render', ($, e) => { const { Text } = $.ui.resolve(e as never) as any; return <Text>engine</Text> })
   await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
@@ -125,6 +126,9 @@ test('band: Not now hides it; Let Claude clean it picks, confirms and quits one 
   }
   expect(await ui.find({ type: 'Text', text: /Memory (warn|critical)/ })).toBeDefined()
   await ui.press({ key: 'clean' })
+  // The press only starts the clean-up (a press must return fast); the timer runs it.
+  expect(osa.length).toBe(0)
+  await clock.advance(100)
   expect(osa).toEqual([['osascript', '-e', 'tell application "/Applications/Slack.app" to quit']])
   await ui.press({ key: 'later' })
   await ui.unmount()

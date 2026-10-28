@@ -134,6 +134,21 @@ async function cleanFlow($: Ctx, dryRun: boolean): Promise<string> {
   return lines.join('\n')
 }
 
+// A press hook must return within the app's 10 s budget, but a clean-up scans (~5 s)
+// and waits on two questions. So the press only starts it: the work runs from a
+// one-shot timer, outside the press, and reports back with a toast.
+let cleaning = false
+function startClean($: Ctx): void {
+  if (cleaning) { $.ui.toast('memory-guard: a clean-up is already open.', { timeoutMs: 5000 }); return }
+  cleaning = true
+  $.ui.toast('memory-guard: checking what is safe to quit…', { timeoutMs: 5000 })
+  $.clock.after(50, () => {
+    void cleanFlow($, false)
+      .then(t => $.ui.toast(t, { timeoutMs: 15_000 }), err => $.ui.toast(`memory-guard: ${String(err)}`, { timeoutMs: 15_000 }))
+      .finally(() => { cleaning = false })
+  })
+}
+
 async function tick($: Ctx): Promise<void> {
   const cfg = await loadCfg($)
   const r = await $.process.run(
@@ -232,7 +247,7 @@ export const register: Register = on => {
             <Text color={color}>▍</Text>
             <Text bold color={color}> ● Memory {level}</Text>
             <Text dimColor>  {bandMeter(snap)}  </Text>
-            <Button key="clean" label="Let Claude clean it" variant="primary" onPress={async () => { try { $.ui.toast(await cleanFlow($, false).catch(err => `memory-guard: ${String(err)}`), { timeoutMs: 15_000 }) } catch { /* surface gone */ } }} />
+            <Button key="clean" label="Let Claude clean it" variant="primary" onPress={() => startClean($)} />
             <Text> </Text>
             <Button key="later" label="Not now" variant="secondary" onPress={async () => { const at = await $.clock.now(); await update($, dismissedA, () => ({ level, at })) }} />
           </Box>
