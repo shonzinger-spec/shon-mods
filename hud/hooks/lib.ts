@@ -158,8 +158,10 @@ const FONT = "-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-ser
 const xml = (s: string): string => s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c] ?? c)
 const charEm = (ch: string): number => (/[\s.,:;'|!il1()[\]·]/.test(ch) ? 0.3 : /[A-Zmw@%+]/.test(ch) ? 0.72 : 0.56)
 const textWidth = (s: string, size: number): number => [...s].reduce((w, ch) => w + charEm(ch) * size, 0)
-const GRAD = { violet: ['#A78BFA', '#7C3AED'], ok: ['#2DD4BF', '#0D9488'], warn: ['#FBBF24', '#D97706'], critical: ['#F87171', '#DC2626'] } as const
-const SW = 14 // pill height
+const GRAD = { violet: ['#A78BFA', '#8B5CF6'], ok: ['#2DD4BF', '#14B8A6'], warn: ['#FBBF24', '#F59E0B'], critical: ['#F87171', '#EF4444'] } as const
+const SW = 12 // pill height
+const CELL = 3 // dot grid
+const noise = (a: number, b: number): number => { const v = Math.sin(a * 127.1 + b * 311.7) * 43758.5453; return v - Math.floor(v) }
 const SH = 22 // strip height
 const FS = 11
 
@@ -174,27 +176,38 @@ export function svgStrip(o: SvgModel): { svg: string; w: number; alt: string } {
     parts.push(`<text class="${cls}" x="${x}" y="${y}" font-family="${FONT}" font-size="${FS}"${extra}>${xml(s)}</text>`)
     x += textWidth(s, FS)
   }
+  // Savvy-style bar: muted rounded track, a dotted fill that thickens toward its
+  // head (dots twinkle unless motion is off), and a solid tag riding at the head.
   const bar = (id: string, w: number, pct: number, kind: keyof typeof GRAD, label: string) => {
     const p = Math.max(0, Math.min(100, Number.isFinite(pct) ? pct : 0))
-    const fw = (p / 100) * w
-    const [a, b] = GRAD[kind]
-    const y0 = (SH - SW) / 2
+    const fw = Math.round((p / 100) * w)
+    const color = GRAD[kind][1]
     const gid = `${id}-${kind}`
-    defs.push(`<linearGradient id="g${gid}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${a}"/><stop offset="1" stop-color="${b}"/></linearGradient>`)
+    const y0 = (SH - SW) / 2
+    const cols = Math.floor(fw / CELL)
+    const rows = Math.floor(SW / CELL)
+    let dots = ''
+    for (let c = 0; c < cols; c++) {
+      const density = 0.35 + 0.6 * Math.pow(c / Math.max(1, cols), 1.2)
+      for (let r = 0; r < rows; r++) {
+        if (noise(c, r) < density) dots += `<rect class="t${Math.floor(noise(r, c) * 4)}" x="${c * CELL + 0.5}" y="${r * CELL + 0.5}" width="2" height="2"/>`
+      }
+    }
+    const tw = Math.round(16 + textWidth(label, FS - 1))
+    const tx = Math.max(0, Math.min(w - tw, fw - tw))
     defs.push(`<clipPath id="c${gid}"><rect width="${w}" height="${SW}" rx="${SW / 2}"/></clipPath>`)
-    const shine = o.motion ? `<polygon class="sh" points="-25,0 -5,0 -10,${SW} -30,${SW}" fill="#fff" opacity="0.25"><animateTransform attributeName="transform" type="translate" values="0 0;${Math.round(w + 40)} 0;${Math.round(w + 40)} 0" keyTimes="0;0.6;1" dur="3.5s" repeatCount="indefinite"/></polygon>` : ''
     parts.push(
       `<g transform="translate(${x},${y0})"><rect class="k" width="${w}" height="${SW}" rx="${SW / 2}"/>` +
-        `<g clip-path="url(#c${gid})"><rect width="${fw > 0 ? Math.max(fw, SW) : 0}" height="${SW}" rx="${SW / 2}" fill="url(#g${gid})"/>${shine}</g>` +
-        `<rect x="0.5" y="0.5" width="${w - 1}" height="${SW - 1}" rx="${(SW - 1) / 2}" fill="none" stroke="${b}" stroke-opacity="0.55" stroke-width="1"/>` +
-        `<text x="${w / 2}" y="${SW / 2 + 4}" text-anchor="middle" font-family="${FONT}" font-size="${FS}" font-weight="600" fill="#fff" stroke="rgba(0,0,0,0.35)" stroke-width="2" paint-order="stroke">${xml(label)}</text></g>`,
+        `<g clip-path="url(#c${gid})" fill="${color}">${dots}</g>` +
+        `<rect x="${tx}" width="${tw}" height="${SW}" rx="${SW / 2}" fill="${color}"/>` +
+        `<text x="${tx + tw / 2}" y="${SW / 2 + 3.8}" text-anchor="middle" font-family="${FONT}" font-size="${FS - 1}" font-weight="600" fill="#fff">${xml(label)}</text></g>`,
     )
     x += w
   }
   if (o.e) {
     text('effort', 'm')
     x += 6
-    bar('e', 96, o.epct ?? effortPct(o.e.level), 'violet', o.e.level)
+    bar('e', 120, o.epct ?? effortPct(o.e.level), 'violet', o.e.level)
     const tail = `${o.arr ? ` ${o.arr.trim()}` : ''} ${sourceText(o.e.source)}`
     parts.push(`<text class="m" x="${x}" y="${y}" font-family="${FONT}" font-size="${FS}" xml:space="preserve">${xml(tail)}</text>`)
     x += textWidth(tail, FS)
@@ -209,7 +222,7 @@ export function svgStrip(o: SvgModel): { svg: string; w: number; alt: string } {
     const sw = swapPct(m)
     text('ram', 'm')
     x += 6
-    bar('m', 140, used ?? 0, m.level, used === undefined ? '?' : `${Math.round(used)}%`)
+    bar('m', 160, used ?? 0, m.level, used === undefined ? '?' : `${Math.round(used)}%`)
     if (free) {
       x += 6
       text(`${free}G free`, 'm')
@@ -231,7 +244,7 @@ export function svgStrip(o: SvgModel): { svg: string; w: number; alt: string } {
   const css =
     '.m{fill:#8a8a8a}.k{fill:#e4e4e2}@media (prefers-color-scheme: dark){.m{fill:#9a9a9a}.k{fill:#2c2c2c}}' +
     (o.motion
-      ? '@media (prefers-reduced-motion: reduce){.sh{display:none}}'
+      ? '.t0,.t1,.t2,.t3{animation:tw 2.2s ease-in-out infinite}.t1{animation-duration:2.8s;animation-delay:-.7s}.t2{animation-duration:1.9s;animation-delay:-1.3s}.t3{animation-duration:3.3s;animation-delay:-.4s}@keyframes tw{0%,100%{opacity:1}50%{opacity:.3}}@media (prefers-reduced-motion: reduce){.t0,.t1,.t2,.t3{animation:none}}'
       : '')
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${SH}" viewBox="0 0 ${w} ${SH}"><style>${css}</style><defs>${defs.join('')}</defs>${parts.join('')}</svg>`
   return { svg, w, alt: alts.join(', ') }
