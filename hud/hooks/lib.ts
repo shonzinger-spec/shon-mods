@@ -13,8 +13,8 @@ export function effortCells(level: string): string {
   return '▰'.repeat(n) + '▱'.repeat(5 - n)
 }
 
-const COLORS: Record<string, string> = { low: 'green', medium: 'cyan', high: 'yellow', xhigh: 'magenta', max: 'red' }
-export const effortColor = (level: string): string => COLORS[level] ?? 'white'
+// Effort level as a percent of the pill: low 20 ... max 100; unknown 0.
+export const effortPct = (level: string): number => (LEVELS.indexOf(level) + 1) * 20
 
 // ↑ / ↓ when the level changed within the last 90 s; '' otherwise.
 export function arrow(prev: string | null, level: string | null, since: number, now: number): string {
@@ -55,15 +55,34 @@ export function parseMem(text: string): MemNow | null {
 
 const g1 = (mb: number) => (mb / 1000).toFixed(1)
 
-// A horizontal bar: `fill` drawn in the level color, `track` dim. Eighth blocks
-// make the edge smooth; the two parts always add up to `width` cells.
-export function bar(pct: number, width = 12): { fill: string; track: string } {
+export type Seg = { text: string; color?: string; backgroundColor?: string; bold?: boolean }
+
+// A pill progress bar as styled segments: caps, `width` body cells, 1/8-cell edge, centered label.
+// Total visible width is always width + 2.
+export function pill(pct: number, width: number, fill: string, track: string, label: string): Seg[] {
   const p = Math.max(0, Math.min(100, Number.isFinite(pct) ? pct : 0))
   const eighths = Math.round((p / 100) * width * 8)
   const full = Math.floor(eighths / 8)
   const part = eighths % 8
-  const fill = '█'.repeat(full) + (part ? ['', '▏', '▎', '▍', '▌', '▋', '▊', '▉'][part] : '')
-  return { fill, track: '░'.repeat(width - full - (part ? 1 : 0)) }
+  const start = Math.floor((width - label.length) / 2)
+  const cells: Seg[] = []
+  for (let i = 0; i < width; i++) {
+    const filled = i < full
+    const k = i - start
+    if (k >= 0 && k < label.length) {
+      cells.push(filled ? { text: label[k] as string, color: '#FFFFFF', backgroundColor: fill, bold: true } : { text: label[k] as string, color: '#C9CED6', backgroundColor: track })
+    } else if (filled) cells.push({ text: ' ', backgroundColor: fill })
+    else if (i === full && part) cells.push({ text: ['', '▏', '▎', '▍', '▌', '▋', '▊', '▉'][part] as string, color: fill, backgroundColor: track })
+    else cells.push({ text: ' ', backgroundColor: track })
+  }
+  const all: Seg[] = [{ text: '◖', color: p === 0 ? track : fill }, ...cells, { text: '◗', color: p === 100 ? fill : track }]
+  const out: Seg[] = []
+  for (const c of all) {
+    const l = out[out.length - 1]
+    if (l && l.color === c.color && l.backgroundColor === c.backgroundColor && l.bold === c.bold) l.text += c.text
+    else out.push({ ...c })
+  }
+  return out
 }
 
 // The numbers beside the bar. Used % may be a tween frame, so it is passed in.
@@ -74,11 +93,13 @@ export const swapPct = (m: { swapTotalMB: number; swapUsedMB: number }): number 
   m.swapTotalMB > 0 ? Math.round((m.swapUsedMB / m.swapTotalMB) * 100) : null
 
 export const MEM_COLOR = { ok: 'green', warn: 'yellow', critical: 'red' } as const
+export const MEM_FILL = { ok: '#14B8A6', warn: '#F59E0B', critical: '#EF4444' } as const
+export const EFFORT_FILL = '#8B5CF6'
+export const EFFORT_TRACK = '#2E2A3D'
+export const MEM_TRACK = '#23303A'
 
-export const SEP = '  │  '
-
-// Swap segment color: yellow from 85%, red from 97%, null = dim.
-export const swapColor = (pct: number): 'yellow' | 'red' | null => (pct >= 97 ? 'red' : pct >= 85 ? 'yellow' : null)
+// Swap segment color: amber from 85%, red from 97%, null = dim.
+export const swapColor = (pct: number): string | null => (pct >= 97 ? '#EF4444' : pct >= 85 ? '#F59E0B' : null)
 
 // Values from `from` to `to` in `steps` equal steps; the last is exactly `to`.
 export function tween(from: number, to: number, steps: number): number[] {
@@ -86,14 +107,6 @@ export function tween(from: number, to: number, steps: number): number[] {
   const out: number[] = []
   for (let i = 1; i < n; i++) out.push(from + ((to - from) * i) / n)
   out.push(to)
-  return out
-}
-
-// Cell counts one step at a time from `from` (not included) to `to` (included).
-export function fillFrames(from: number, to: number): number[] {
-  const out: number[] = []
-  const d = to > from ? 1 : -1
-  for (let n = from + d; from !== to && (d > 0 ? n <= to : n >= to); n += d) out.push(n)
   return out
 }
 
@@ -128,14 +141,12 @@ export function runAnim(every: EveryFn, ms: number, frames: number[], draw: (v: 
 // Plain-text strip (PromptHint tail has no colors).
 export function stripText(e: EffortNow | null, arr: string, m: MemNow | null): string {
   const parts: string[] = []
-  if (e) parts.push(`⚡ ${arr}${e.level} ${effortCells(e.level)} ${sourceText(e.source)}${e.ultracode ? ' + team' : ''}`)
+  if (e) parts.push(`effort ${effortCells(e.level)} ${arr}${e.level}`)
   if (m) {
     const u = usedPct(m)
-    const b = bar(u ?? 0)
-    const g = freeGB(m)
-    parts.push(`▣ RAM ${b.fill}${b.track} ${u === undefined ? '?' : `${Math.round(u)}%`}${g ? ` · ${g}G free` : ''}`)
+    parts.push(`ram ${u === undefined ? '?' : `${Math.round(u)}%`}`)
     const sw = swapPct(m)
     if (sw !== null) parts.push(`swap ${sw}%`)
   }
-  return parts.join(SEP)
+  return parts.join(' · ')
 }

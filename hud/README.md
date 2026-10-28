@@ -1,14 +1,15 @@
 # hud
 
 ## What it does
-One clean line showing the effort level the effort-router picked for this chat (updates live) next to the memory bar:
+Two sleek pill progress bars: the effort level the effort-router picked for this chat (updates live) and the memory bar.
 
-`⚡ high ▰▰▰▱▱ auto  │  ▣ RAM ████████▍░░░ 70% · 4.9G free  │  swap 97%`
+`effort ◖██high██▍░░◗ ↑ auto   ram ◖████69%███▍░░░◗ 5.1G free · swap 98%`
 
-- Labels and `│` are dim, values bright; swap is its own segment (yellow from 85%, red from 97%, else dim). `pane` draws it in a rounded box colored by the memory level.
-- Motion, only on a change: the effort cells fill one by one with a one-time flash of the level word, and the RAM bar slides to its new value. `/hud motion off|on` (saved) turns it off; nothing runs while idle.
-- Effort cells fill 1 to 5 for low, medium, high, xhigh, max. Colors: low green, medium cyan, high yellow, xhigh magenta, max red. ` · auto`, ` · you set it` or ` · forced` is dim; ultracode adds ` + team`. For 90 s after a change an arrow shows: `↑ high` or `↓ low`.
-- The RAM fill is green (ok), yellow (warn) or red (critical) with a dim track. The memory half hides if its data is older than 10 minutes. A missing source hides its half; with neither, nothing is drawn.
+- Each pill has round caps, a solid fill on a muted track, an edge that moves in 1/8-cell steps, and a centered label (level word, or used `NN%`). Words `effort` and `ram`, source, and `free` are dim. `pane` draws it in a rounded box colored by the memory level.
+- Effort pill (width 10): fill `#8B5CF6` violet, track `#2E2A3D`; fill is 20% per level (low 20 ... max 100). ` auto`, ` you set it` or ` forced` is dim; ultracode adds ` + team` in violet. For 90 s after a change a violet arrow shows: `↑` or `↓`.
+- Memory pill (width 14): fill by level, ok teal `#14B8A6`, warn amber `#F59E0B`, critical red `#EF4444`; track `#23303A`. Swap is its own segment: dim, amber `#F59E0B` from 85%, red `#EF4444` from 97%. The memory half hides if its data is older than 10 minutes. A missing source hides its half; with neither, nothing is drawn.
+- `hint` placement is plain text: `effort ▰▰▰▱▱ high · ram 69% · swap 98%`.
+- Motion, only on a change: both fills glide to the new value (10 frames, 40 ms apart). `/hud motion off|on` (saved) turns it off; nothing runs while idle.
 
 ## Commands it adds
 - `/hud`: shows where the strip sits, whether motion is on, and the one-line help.

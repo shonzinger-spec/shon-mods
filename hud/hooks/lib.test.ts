@@ -1,10 +1,10 @@
 import { expect, test } from 'claude-code/testing'
-import { arrow, bar, effortCells, effortColor, fillFrames, parseEffort, parseMem, runAnim, stale, stripText, swapColor, tween } from './lib.js'
+import { arrow, effortCells, effortPct, parseEffort, parseMem, pill, runAnim, stale, stripText, swapColor, tween } from './lib.js'
 
 test('effortCells fills 1..5 and unknown is empty', () => {
   expect(['low', 'medium', 'high', 'xhigh', 'max'].map(effortCells)).toEqual(['▰▱▱▱▱', '▰▰▱▱▱', '▰▰▰▱▱', '▰▰▰▰▱', '▰▰▰▰▰'])
   expect(effortCells('nope')).toBe('▱▱▱▱▱')
-  expect(effortColor('xhigh')).toBe('magenta')
+  expect(['low', 'max', 'nope'].map(effortPct)).toEqual([20, 100, 0])
 })
 
 test('arrow shows only for a recent change, in the right direction', () => {
@@ -15,12 +15,42 @@ test('arrow shows only for a recent change, in the right direction', () => {
   expect(arrow('high', 'high', 1000, 2000)).toBe('')
 })
 
-test('bar always adds up to its width', () => {
-  for (const p of [0, 7, 50, 70, 99.9, 100, NaN]) {
-    const b = bar(p, 12)
-    expect([...b.fill, ...b.track].length).toBe(12)
-  }
-  expect(bar(70).fill).toBe('████████▍')
+const F = '#8B5CF6'
+const T = '#2E2A3D'
+const txt = (p: ReturnType<typeof pill>) => p.map(x => x.text).join('')
+
+test('pill is always width + 2 wide; NaN and out-of-range clamp', () => {
+  for (const p of [0, 7, 50, 71, 99.9, 100, NaN, 150, -5]) expect([...txt(pill(p, 10, F, T, 'high'))].length).toBe(12)
+  expect(pill(NaN, 10, F, T, '')).toEqual(pill(0, 10, F, T, ''))
+  expect(pill(150, 10, F, T, '')).toEqual(pill(100, 10, F, T, ''))
+})
+
+test('pill 0 and 100: cap colors, no fill / all fill', () => {
+  expect(pill(0, 4, F, T, '')).toEqual([{ text: '◖', color: T }, { text: '    ', backgroundColor: T }, { text: '◗', color: T }])
+  expect(pill(100, 4, F, T, '')).toEqual([{ text: '◖', color: F }, { text: '    ', backgroundColor: F }, { text: '◗', color: F }])
+})
+
+test('pill 50: half filled, plain caps', () => {
+  expect(pill(50, 4, F, T, '')).toEqual([
+    { text: '◖', color: F }, { text: '  ', backgroundColor: F }, { text: '  ', backgroundColor: T }, { text: '◗', color: T },
+  ])
+})
+
+test('pill 71 moves the edge in eighths and centers a colored label', () => {
+  // 71% of 10 cells = 7.1 -> 57 eighths: 7 full, 1/8 block on cell 7
+  const p = pill(71, 10, F, T, 'high')
+  expect(txt(p)).toBe('◖   high▏  ◗')
+  expect(p).toEqual([
+    { text: '◖', color: F },
+    { text: '   ', backgroundColor: F },
+    { text: 'high', color: '#FFFFFF', backgroundColor: F, bold: true },
+    { text: '▏', color: F, backgroundColor: T },
+    { text: '  ', backgroundColor: T },
+    { text: '◗', color: T },
+  ])
+  const q = pill(40, 10, F, T, '40%') // label spans filled and empty cells
+  expect(q.filter(x => x.text === '4' || x.text === '0%').length).toBe(2)
+  expect(q.find(x => x.text === '0%')).toEqual({ text: '0%', color: '#C9CED6', backgroundColor: T })
 })
 
 test('stale after 10 minutes, and for garbage', () => {
@@ -36,9 +66,8 @@ test('parsers tolerate garbage; strip text has both halves', () => {
   const e = parseEffort('{"level":"high","ultracode":true,"reason":"r","source":"auto","at":1}')
   const m = parseMem('{"level":"warn","freePct":30,"memTotalMB":16384,"swapUsedMB":50,"swapTotalMB":100,"at":1}')
   const t = stripText(e, '', m)
-  expect(t).toContain('⚡ high ▰▰▰▱▱ auto + team')
-  expect(t).toContain('▣ RAM ')
-  expect(t).toContain('  │  swap 50%')
+  expect(t).toBe('effort ▰▰▰▱▱ high · ram 70% · swap 50%')
+  expect(stripText(e, '↑ ', { ...m!, freePct: 31 })).toBe('effort ▰▰▰▱▱ ↑ high · ram 69% · swap 50%')
   expect(stripText(null, '', null)).toBe('')
 })
 
@@ -49,14 +78,8 @@ test('tween ends exactly at the target, in equal steps', () => {
   expect(tween(5, 9, 0)).toEqual([9])
 })
 
-test('fillFrames goes one cell at a time, both ways', () => {
-  expect(fillFrames(1, 4)).toEqual([2, 3, 4])
-  expect(fillFrames(5, 3)).toEqual([4, 3])
-  expect(fillFrames(2, 2)).toEqual([])
-})
-
-test('swapColor: dim below 85, yellow from 85, red from 97', () => {
-  expect([0, 84, 85, 96, 97, 100].map(swapColor)).toEqual([null, null, 'yellow', 'yellow', 'red', 'red'])
+test('swapColor: dim below 85, amber from 85, red from 97', () => {
+  expect([0, 84, 85, 96, 97, 100].map(swapColor)).toEqual([null, null, '#F59E0B', '#F59E0B', '#EF4444', '#EF4444'])
 })
 
 test('runAnim plays every frame on one timer and stops it after the last', () => {

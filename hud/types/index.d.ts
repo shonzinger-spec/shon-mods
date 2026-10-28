@@ -4,6 +4,6 @@ export type Trend = { prev: string | null; level: string | null; since: number }
 
 declare module 'claude-code' {
   interface PluginState {
-    hud: { effort: EffortNow | null; mem: MemNow | null; trend: Trend; placement: string; anim: { cells: number | null; flash: boolean; pct: number | null } }
+    hud: { effort: EffortNow | null; mem: MemNow | null; trend: Trend; placement: string; anim: { epct: number | null; pct: number | null } }
   }
 }

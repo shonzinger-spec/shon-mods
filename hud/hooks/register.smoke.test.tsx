@@ -4,7 +4,7 @@ declare const setTimeout: (f: (v?: unknown) => void, ms: number) => unknown
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms))
 
 const EFFORT = JSON.stringify({ level: 'high', ultracode: false, reason: 'x', source: 'auto', at: 1_000_000 })
-const MEM = JSON.stringify({ level: 'warn', freePct: 30, memTotalMB: 16384, swapUsedMB: 50, swapTotalMB: 100, at: 1_000_000 })
+const MEM = JSON.stringify({ level: 'ok', freePct: 31, memTotalMB: 16384, swapUsedMB: 50, swapTotalMB: 100, at: 1_000_000 })
 
 type On = (ev: string, fn: (_: unknown, e: any) => unknown) => void
 function wire(on: On, files: Record<string, string>, store = new Map<string, unknown>(), clock = true) {
@@ -36,8 +36,20 @@ test('footer draws effort and RAM by default', async ($, on) => {
   wire(on, FILES)
   await $.session.start(START)
   const ui = await $.ui.mount(FOOTER)
-  expect(await ui.find({ type: 'Text', text: /high/ })).toBeDefined()
-  expect(await ui.find({ type: 'Text', text: /RAM/ })).toBeDefined()
+  const all = (await ui.findAll({ type: 'Text' })).map(x => x.text).join('')
+  expect(all).toContain('high')
+  expect(all).toContain('69%')
+  const bgs = (await ui.findAll({ type: 'Text' })).map(x => x.props.backgroundColor)
+  expect(bgs).toContain('#8B5CF6')
+  expect(bgs).toContain('#14B8A6')
+  await ui.unmount()
+})
+
+test('critical memory pill is red', async ($, on) => {
+  wire(on, { ...FILES, '/home/t/.claude/mods-src/memory-guard/state/now.json': MEM.replace('"ok"', '"critical"').replace('"warn"', '"critical"') })
+  await $.session.start(START)
+  const ui = await $.ui.mount(FOOTER)
+  expect((await ui.findAll({ type: 'Text' })).map(x => x.props.backgroundColor)).toContain('#EF4444')
   await ui.unmount()
 })
 
@@ -47,7 +59,7 @@ test('/hud place band moves the strip: band draws, footer passes', async ($, on)
   const r = await $.command.run({ command: 'hud', args: 'place band', ...RUN })
   expect(JSON.stringify(r)).toContain('band')
   let ui = await $.ui.mount(BAND)
-  expect(await ui.find({ type: 'Text', text: /RAM/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /ram/ })).toBeDefined()
   await ui.unmount()
   ui = await $.ui.mount(FOOTER)
   expect((await ui.find({ type: 'Text', text: /engine/ }))?.text).toBe('engine')
@@ -72,7 +84,7 @@ test('off draws nothing; bad arg gives usage', async ($, on) => {
   await $.session.start(START)
   await $.command.run({ command: 'hud', args: 'place off', ...RUN })
   const ui = await $.ui.mount(FOOTER)
-  expect(await ui.find({ type: 'Text', text: /RAM/ })).toBeUndefined()
+  expect(await ui.find({ type: 'Text', text: /ram/ })).toBeUndefined()
   await ui.unmount()
   const r = await $.command.run({ command: 'hud', args: 'place sideways', ...RUN })
   expect(JSON.stringify(r)).toContain('usage')
@@ -86,12 +98,13 @@ test('missing files pass to the engine', async ($, on) => {
   await ui.unmount()
 })
 
-// Motion: effort goes low -> max; the mocked clock is moved 80 ms at a time and the drawn cell count is read.
+// Motion: effort goes low -> max; the mocked clock is moved 40 ms at a time and the drawn filled-cell count is read.
 const EFFORT_KEY = '/home/t/.claude/mods-src/effort-router/state/now-S1.json'
 const eff = (level: string) => JSON.stringify({ level, ultracode: false, reason: 'x', source: 'auto', at: 1_000_000 })
+// Filled cells of the effort pill = characters on Texts with the violet background.
 async function cellsDrawn(ui: any): Promise<number> {
-  const t = await ui.find({ type: 'Text', text: /^ [▰▱]{5}$/ })
-  return ((t?.text as string) ?? '').split('▰').length - 1
+  const ts = await ui.findAll({ type: 'Text' })
+  return ts.filter((x: any) => x.props.backgroundColor === '#8B5CF6').reduce((n: number, x: any) => n + (x.text as string).length, 0)
 }
 async function effortRun(motionOff: boolean) {
   return async ($: any, on: any) => {
@@ -106,22 +119,22 @@ async function effortRun(motionOff: boolean) {
   }
 }
 
-test('motion on: after low -> max the strip passes through intermediate cell counts and ends at 5', async ($, on) => {
+test('motion on: after low -> max the strip passes through intermediate fill counts and ends full', async ($, on) => {
   const { ui, clock } = await (await effortRun(false))($, on)
   const seen: number[] = []
-  for (let i = 0; i < 12; i++) {
+  for (let i = 0; i < 14; i++) {
     seen.push(await cellsDrawn(ui))
-    await clock.advance(80)
+    await clock.advance(40)
   }
   seen.push(await cellsDrawn(ui))
-  expect(seen.some(n => n > 1 && n < 5)).toBe(true)
-  expect(seen.at(-1)).toBe(5)
+  expect(seen.some(n => n > 2 && n < 10)).toBe(true)
+  expect(seen.at(-1)).toBe(10)
   await ui.unmount()
 })
 
 test('/hud motion off draws the final value at once and shows in /hud', async ($, on) => {
   const { ui, clock } = await (await effortRun(true))($, on)
-  expect(await cellsDrawn(ui)).toBe(5)
+  expect(await cellsDrawn(ui)).toBe(10)
   const r = await $.command.run({ command: 'hud', args: '', ...RUN })
   expect(JSON.stringify(r)).toContain('motion off')
   void clock
