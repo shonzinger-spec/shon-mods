@@ -7,7 +7,8 @@ const EFFORT = JSON.stringify({ level: 'high', ultracode: false, reason: 'x', so
 const MEM = JSON.stringify({ level: 'ok', freePct: 31, memTotalMB: 16384, swapUsedMB: 50, swapTotalMB: 100, at: 1_000_000 })
 
 type On = (ev: string, fn: (_: unknown, e: any) => unknown) => void
-function wire(on: On, files: Record<string, string>, store = new Map<string, unknown>(), clock = true) {
+// Most tests below exercise the footer placement; the default (band) has its own test.
+function wire(on: On, files: Record<string, string>, store = new Map<string, unknown>([['placement', 'footer']]), clock = true) {
   on('command.register', () => ({ value: { command: 'x' } }))
   on('session.start', (_, e) => ({ cwd: e.cwd }))
   on('env.get', () => ({ value: '/home/t' }))
@@ -110,7 +111,7 @@ async function effortRun(motionOff: boolean) {
   return async ($: any, on: any) => {
     const clock = mock.clock(on, { now: 1_000_000 })
     const files: Record<string, string> = { ...FILES, [EFFORT_KEY]: eff('low') }
-    wire(on, files, new Map(motionOff ? [['motion', 'off']] : []), false)
+    wire(on, files, new Map<string, unknown>([['placement', 'footer'], ...(motionOff ? [['motion', 'off'] as [string, unknown]] : [])]), false)
     await $.session.start(START)
     const ui = await $.ui.mount(FOOTER)
     files[EFFORT_KEY] = eff('max')
@@ -154,4 +155,17 @@ test('desktop footer draws one Svg strip; terminal keeps text pills', async ($, 
   expect(await t.find({ type: 'Svg' })).toBeUndefined()
   expect(await t.find({ type: 'Text', text: /ram/ })).toBeDefined()
   await t.unmount()
+})
+
+test('default placement is the band, with other mods\' bands kept beneath it', async ($, on) => {
+  wire(on, FILES, new Map())
+  await $.session.start(START)
+  const ui = await $.ui.mount(BAND)
+  const texts = JSON.stringify(await ui.find({ type: 'Text', text: /engine/ }))
+  expect(texts).toContain('engine')
+  expect(await ui.find({ type: 'Text', text: /high|RAM|ram|%/ })).toBeDefined()
+  await ui.unmount()
+  const foot = await $.ui.mount(FOOTER)
+  expect((await foot.find({ type: 'Text' }))?.text).toBe('engine')
+  await foot.unmount()
 })

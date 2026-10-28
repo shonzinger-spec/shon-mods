@@ -10,7 +10,7 @@ import {
 const effortA = atom({ plugin: 'hud', key: 'effort' } as const, null)
 const memA = atom({ plugin: 'hud', key: 'mem' } as const, null)
 const trendA = atom({ plugin: 'hud', key: 'trend' } as const, { prev: null, level: null, since: 0 })
-const placementA = atom({ plugin: 'hud', key: 'placement' } as const, 'footer')
+const placementA = atom({ plugin: 'hud', key: 'placement' } as const, 'band')
 // Frames of the running animations: effort fill % and RAM used %; null = draw the real value.
 const animA = atom({ plugin: 'hud', key: 'anim' } as const, { epct: null, pct: null })
 // Footer frame clock: the footer slot shows the SVG frozen, so it is redrawn ~7x a second.
@@ -86,9 +86,9 @@ async function animate($: Ctx, oldE: EffortNow | null, e: EffortNow | null, oldM
 async function savedPlacement($: Ctx): Promise<Placement> {
   try {
     const v = await $.store.get('placement')
-    return isPlacement(v) ? v : 'footer'
+    return isPlacement(v) ? v : 'band'
   } catch {
-    return 'footer'
+    return 'band'
   }
 }
 
@@ -166,11 +166,6 @@ export const register: Register = on => {
       if (!started) {
         started = true
         $.clock.every(5000, () => void refresh($))
-        // Only ticks while the strip sits in the footer with motion on.
-        $.clock.every(FRAME_MS, () => void (async () => {
-          if ((await read($, placementA)) !== 'footer' || (await savedMotion($)) !== 'on') return
-          await update($, frameA, n => (n + 1) % 100_000)
-        })().catch(() => undefined))
       }
       await refresh($)
     } catch {
@@ -223,7 +218,7 @@ export const register: Register = on => {
       return (
         <Box>
           {e.props.modes.length ? <Text dimColor>{e.props.modes.join(' & ')}  </Text> : null}
-          {svgEl($, e, d, await read($, frameA)) ?? strip(Box, Text, d)}
+          {svgEl($, e, d) ?? strip(Box, Text, d)}
         </Box>
       )
     } catch {
@@ -236,8 +231,13 @@ export const register: Register = on => {
       if (e.props.hasSurvey || (await read($, placementA)) !== 'band') return next(e)
       const d = await data($)
       if (!d) return next(e)
+      // Draw the strip with the other mods' bands (memory-guard's) beneath it, as
+      // savvy-progress does. The engine's own placeholder is never nested.
+      const drawn = await Promise.resolve(next(e)).catch(() => null)
+      const below = drawn && typeof drawn === 'object' && (drawn as { type?: string }).type !== 'engine' ? drawn : null
       const { Box, Text } = $.ui.resolve(e)
-      return svgEl($, e, d) ?? strip(Box, Text, d)
+      const mine = svgEl($, e, d) ?? strip(Box, Text, d)
+      return below ? <Box flexDirection="column">{mine}{below as never}</Box> : mine
     } catch {
       return next(e)
     }

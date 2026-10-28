@@ -17,7 +17,7 @@ On desktop (any surface with `Svg`) the strip is one SVG in the style of savvy-p
 ## Commands it adds
 - `/hud`: shows where the strip sits, whether motion is on, and the one-line help.
 - `/hud motion <on|off>`: toggles the change animations (default on).
-- `/hud place <footer|band|hint|pane|off>`: moves it and remembers the choice in every new chat. `footer` (default) is the right of the prompt footer, `band` the row above the prompt, `hint` the dim tail of the line under the prompt (terminal only, no colors), `pane` a side pane titled HUD, `off` draws nothing.
+- `/hud place <footer|band|hint|pane|off>`: moves it and remembers the choice in every new chat. `band` (default) is the row above the prompt, where the bars animate, with any other mod band kept beneath; `footer` is the right of the prompt footer (the app shows the bars there as a still picture, so no animation), `hint` the dim tail of the line under the prompt (terminal only, no colors), `pane` a side pane titled HUD, `off` draws nothing.
 
 ## Why no dragging
 Claude Code only lets a mod draw in fixed slots, so free dragging is impossible. The place picker above is the closest thing.
