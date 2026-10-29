@@ -69,3 +69,30 @@ export function nudgeOf(options: Readonly<Record<string, unknown>> | undefined):
   const v = options?.nudge_usd
   return typeof v === 'number' && v > 0 ? v : 15
 }
+
+/** Auto-handoff cap in USD (`handoff_usd`, default 20); 0 or negative disables, non-numbers fall back to 20. */
+export function handoffCapOf(options: Readonly<Record<string, unknown>> | undefined): number {
+  const v = options?.handoff_usd
+  return typeof v === 'number' && Number.isFinite(v) ? v : 20
+}
+
+/** Auto-handoff is on unless `auto_handoff` is exactly false. */
+export function autoHandoffOf(options: Readonly<Record<string, unknown>> | undefined): boolean {
+  return options?.auto_handoff !== false
+}
+
+/** True once, at or over a positive cap, when no handoff was sent for this conversation yet. */
+export function shouldHandoff(usd: number | undefined, cap: number, alreadySent: boolean): boolean {
+  return !alreadySent && typeof usd === 'number' && Number.isFinite(usd) && cap > 0 && usd >= cap
+}
+
+/** The prompt submitted when the cap is hit: handoff, then a fresh chat (or a resume line), then stop. */
+export function costHandoffPrompt(usd: number, cap: number): string {
+  return [
+    `[cost-band] This chat has cost ${usdText(usd)}, at or over the ${limitText(cap)} cap. Stop the current work and hand off. If a handoff for this conversation already exists in it, reuse that file instead of writing another.`,
+    '1. Write the handoff. Use the context-handoff:handoff-save skill if it is available; otherwise save it as ~/.claude/handoffs/<YYYY-MM-DD>-<short-topic>.md when the working directory is the home folder, or as HANDOFF.md in the working directory (update it if it exists). Sections: Goal, Done (each item with its evidence: file path, command run, result), Remaining, Key decisions and why, Failed approaches (do not retry), Next steps, Blockers. Only write what a tool result in this chat shows; mark anything else UNVERIFIED.',
+    '2. Offer a fresh chat. If the mcp__ccd_session__start_session tool exists (Claude Desktop), call it once with initiation "own_initiative", context "fresh", a short title, a prompt that tells the new chat to read the handoff file and continue from Next steps, and a background of at least 80 characters saying why the chat was split (cost cap) and where the handoff file is. The user clicks the card once to start it. If the tool does not exist, end with one line to paste into a new session that points at the handoff file.',
+    '3. Then stop. Do not continue the task in this chat; tell me to carry on in the new chat.',
+    'Keep tool calls few and output short.',
+  ].join('\n')
+}

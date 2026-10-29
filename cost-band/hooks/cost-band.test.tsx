@@ -1,7 +1,17 @@
 import type { On } from 'claude-code'
 import { expect, mock, test } from 'claude-code/testing'
 
-import { bandLevel, bandText, cacheRatio, statusText, toastText } from './lib.ts'
+import {
+  autoHandoffOf,
+  bandLevel,
+  bandText,
+  cacheRatio,
+  costHandoffPrompt,
+  handoffCapOf,
+  shouldHandoff,
+  statusText,
+  toastText,
+} from './lib.ts'
 
 const BAND = {
   plugin: 'cost-band',
@@ -222,4 +232,128 @@ test('after /clear the next conversation toasts each level again', async ($, on)
   await $.turn.complete(turn)
   expect(toasts.length).toBe(3)
   expect(toasts[2]).toContain('at or over the $20 limit')
+})
+
+// ---- auto-handoff at the cap ----
+
+function submits(on: On, mode: 'ok' | 'reject' = 'ok'): string[] {
+  const sent: string[] = []
+  on('prompt.submit', (_, e) => {
+    sent.push(String(e.text))
+    if (mode === 'reject') throw new Error('refused')
+    return { text: e.text }
+  })
+  return sent
+}
+
+test('below cap does not submit', async ($, on) => {
+  engine(on, { usd: 19.99 }, [])
+  const sent = submits(on)
+  await $.turn.complete(turn)
+  expect(sent).toEqual([])
+})
+
+test('at cap on turn.complete submits once, second turn over cap does not resubmit', async ($, on) => {
+  const u: U = { usd: 20 }
+  engine(on, u, [])
+  const sent = submits(on)
+  await $.turn.complete(turn)
+  expect(sent.length).toBe(1)
+  expect(sent[0]).toBe(costHandoffPrompt(20, 20))
+  u.usd = 24
+  await $.turn.complete(turn)
+  await $.turn.complete(turn)
+  expect(sent.length).toBe(1)
+})
+
+test('session.end re-arms the handoff', async ($, on) => {
+  engine(on, { usd: 21 }, [])
+  const sent = submits(on)
+  await $.turn.complete(turn)
+  await $.session.end({ reason: 'clear', sessionId: 's1', resume: { id: '' } })
+  await $.turn.complete(turn)
+  expect(sent.length).toBe(2)
+})
+
+test('subagent turn.complete is ignored', async ($, on) => {
+  engine(on, { usd: 30 }, [])
+  const sent = submits(on)
+  await $.turn.complete({ ...turn, agentId: 'a1' } as never)
+  expect(sent).toEqual([])
+  await $.turn.complete(turn)
+  expect(sent.length).toBe(1)
+})
+
+test('aborted turn over cap does not submit, next answered turn does', async ($, on) => {
+  engine(on, { usd: 25 }, [])
+  const sent = submits(on)
+  await $.turn.complete({ ...turn, reason: 'aborted', isAborted: true } as never)
+  await $.turn.complete({ ...turn, reason: 'error' } as never)
+  expect(sent).toEqual([])
+  await $.turn.complete(turn)
+  expect(sent.length).toBe(1)
+})
+
+test('auto_handoff false never submits', { options: { auto_handoff: false } }, async ($, on) => {
+  engine(on, { usd: 50 }, [])
+  const sent = submits(on)
+  await $.turn.complete(turn)
+  expect(sent).toEqual([])
+})
+
+test('handoff_usd option overrides 20', { options: { handoff_usd: 30 } }, async ($, on) => {
+  const toasts: string[] = []
+  const u: U = { usd: 25 }
+  engine(on, u, [], toasts)
+  const sent = submits(on)
+  await $.turn.complete(turn)
+  expect(sent).toEqual([])
+  u.usd = 31
+  await $.turn.complete(turn)
+  expect(sent.length).toBe(1)
+  expect(sent[0]).toContain('$31.00')
+  expect(sent[0]).toContain('$30 cap')
+})
+
+test('handoff_usd 0 disables', { options: { handoff_usd: 0 } }, async ($, on) => {
+  engine(on, { usd: 99 }, [])
+  const sent = submits(on)
+  await $.turn.complete(turn)
+  expect(sent).toEqual([])
+})
+
+test('submit rejection re-arms', async ($, on) => {
+  engine(on, { usd: 22 }, [])
+  const sent = submits(on, 'reject')
+  await $.turn.complete(turn)
+  for (let i = 0; i < 5; i++) await Promise.resolve()
+  await $.turn.complete(turn)
+  expect(sent.length).toBe(2)
+})
+
+test('prompt mentions start_session, handoff-save, a resume-line fallback and stopping', () => {
+  const p = costHandoffPrompt(20.5, 20)
+  expect(p).toContain('mcp__ccd_session__start_session')
+  expect(p).toContain('context-handoff:handoff-save')
+  expect(p).toContain('paste into a new session')
+  expect(p).toContain('already exists')
+  expect(p).toContain('Do not continue the task')
+  expect(p).toContain('$20.50')
+})
+
+test('handoffCapOf, autoHandoffOf and shouldHandoff defaults and bad values', () => {
+  expect(handoffCapOf(undefined)).toBe(20)
+  expect(handoffCapOf({ handoff_usd: 35 })).toBe(35)
+  expect(handoffCapOf({ handoff_usd: 0 })).toBe(0)
+  expect(handoffCapOf({ handoff_usd: 'x' })).toBe(20)
+  expect(handoffCapOf({ handoff_usd: NaN })).toBe(20)
+  expect(autoHandoffOf(undefined)).toBe(true)
+  expect(autoHandoffOf({ auto_handoff: false })).toBe(false)
+  expect(autoHandoffOf({ auto_handoff: 'no' })).toBe(true)
+  expect(shouldHandoff(20, 20, false)).toBe(true)
+  expect(shouldHandoff(19.9, 20, false)).toBe(false)
+  expect(shouldHandoff(25, 20, true)).toBe(false)
+  expect(shouldHandoff(undefined, 20, false)).toBe(false)
+  expect(shouldHandoff(25, 0, false)).toBe(false)
+  expect(shouldHandoff(25, -1, false)).toBe(false)
 })
