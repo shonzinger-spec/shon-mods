@@ -1,0 +1,94 @@
+{
+  "version": 1,
+  "classes": {
+    "skeptic2": {
+      "model": "fable", "effort": "high", "mode": "enforce", "overrides_agent": true,
+      "keywords": ["second skeptic", "2nd skeptic", "skeptic 2", "skeptic2", "second adversarial"]
+    },
+    "verdict": {
+      "model": "opus", "effort": "xhigh", "mode": "enforce", "overrides_agent": true, "demote_to": "review",
+      "strong_keywords": ["skeptic*", "refut*", "adversarial*", "gauntlet*", "overfit*", "prereg gate*"],
+      "keywords": [
+        "verdict*", "null*", "leak*", "lookahead", "look ahead", "audit*", "held out", "holdout*", "gate*",
+        "falsif*", "false kill*", "re verif*", "integrity", "freeze", "oos", "out of sample", "in sample",
+        "walk forward", "robustness", "significance", "reality check", "kill test", "kill check", "pbo",
+        "permutation", "placebo", "snoop*", "survivorship", "p hack*"
+      ]
+    },
+    "final_pack": {
+      "model": "opus", "effort": "high", "mode": "enforce",
+      "keywords": [
+        "final send pack", "send pack*", "final pack", "final resume*", "resume tailor*", "tailor* resume*", "build resume*",
+        "final cover letter"
+      ]
+    },
+    "drafts": {
+      "model": "sonnet", "effort": "medium", "mode": "suggest",
+      "keywords": [
+        "draft*", "outreach", "copy", "copywrit*", "seo", "claims", "youtube", "video script*", "script for",
+        "cold email*", "email*", "cover letter*", "blog*", "linkedin", "post", "posts", "caption*", "thumbnail text"
+      ]
+    },
+    "spec_code": {
+      "model": "opus", "effort": "high", "mode": "enforce",
+      "keywords": [
+        "per prereg", "per spec", "from spec", "to spec", "frozen spec", "per the spec", "spec synthesis",
+        "synthesi* spec*", "frozen prereg", "build*", "engine*", "write", "implement*", "refactor*", "scaffold*", "repaint*", "parity", "port to"
+      ]
+    },
+    "checked_fix": {
+      "model": "sonnet", "effort": "medium", "mode": "checked",
+      "keywords": [
+        "fix*", "hotfix*", "bug*", "debug*", "repair*", "add", "broken", "crash*", "test failure*", "failing test*",
+        "compile*", "compiler error*", "address review*", "address feedback", "address comments"
+      ]
+    },
+    "review": {
+      "model": "opus", "effort": "high", "mode": "enforce",
+      "keywords": ["review*", "fresh context", "second look", "critique*", "sanity check*"]
+    },
+    "run_report": {
+      "model": "inherit", "mode": "enforce",
+      "keywords": [
+        "run", "runs", "rerun*", "re run*", "execute", "report", "plot*", "chart*", "cross check*", "fresh*", "stale*",
+        "pipeline*", "status", "smoke test*", "benchmark*", "measure*", "monitor*", "health check*", "backtest*"
+      ]
+    },
+    "extract": {
+      "model": "sonnet", "effort": "low", "mode": "suggest",
+      "keywords": [
+        "extract*", "mine", "mining", "summar*", "transcript*", "per item", "fields", "facts", "tag*",
+        "classify each", "label each", "digest", "scrape*", "pull out"
+      ]
+    },
+    "mech_edit": {
+      "model": "sonnet", "effort": "low", "mode": "checked",
+      "keywords": [
+        "merge*", "push", "install*", "apply", "config*", "bump*", "commit*", "mechanical", "rebase", "cherry pick*",
+        "uninstall*", "symlink*", "renam*", "move files", "format*", "update*", "readme*", "changelog*"
+      ]
+    },
+    "locate": {
+      "model": "haiku", "mode": "suggest",
+      "keywords": [
+        "locate", "map", "maps", "grep", "search*", "scan*", "inventor*", "catalog*", "survey*", "explore", "look up", "lookup",
+        "directory map*", "dir map*", "folder map*", "list files", "where is", "where are"
+      ]
+    },
+    "unclassified": {
+      "model": "inherit", "mode": "suggest",
+      "keywords": [
+        "vet", "vets", "vetting", "vetted", "quality test*", "find", "finds", "evaluat*", "assess*", "investigat*", "diagnos*",
+        "root cause*", "deep dive*", "research*", "why"
+      ]
+    }
+  },
+  "agent_map": {
+    "frugal:scout": "locate",
+    "frugal:extractor": "extract",
+    "delegate:reviewer": "review"
+  },
+  "agent_fallback": {
+    "delegate:builder": "spec_code"
+  }
+}

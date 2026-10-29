@@ -1,0 +1,1 @@
+{ "name": "conductor", "version": "0.2.2", "author": { "name": "shon" }, "description": "Routes subagent model/effort by task class; peer-message guards", "types": "./types/index.d.ts" }

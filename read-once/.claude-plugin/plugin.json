@@ -1,0 +1,6 @@
+{
+  "name": "read-once",
+  "version": "0.1.0",
+  "author": { "name": "shon" },
+  "description": "Refuses a whole-file Read of a file this session already read and that has not changed since (same mtime and size), so the same text is not paid for twice. Ranged reads, images, PDFs, notebooks, edited files and post-compaction reads are always allowed."
+}

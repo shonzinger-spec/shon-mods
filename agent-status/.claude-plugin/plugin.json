@@ -1,0 +1,1 @@
+{ "name": "agent-status", "version": "0.1.0", "author": { "name": "shon" }, "description": "Pane, band and toasts for the health of the external coding agents (opencode, codex, cline, copilot, amp, atlarix and the nightly Claude login): does each work, which model, why not, a fix button, and model switches. /agent-status or /coders opens it.", "types": "./types/index.d.ts" }

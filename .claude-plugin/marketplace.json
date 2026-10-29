@@ -159,6 +159,26 @@
       "name": "brain-sync",
       "source": "./brain-sync",
       "description": "/brain: pane showing whether every chat is saved to the second brain, reruns failed saves"
+    },
+    {
+      "name": "conductor",
+      "source": "./conductor",
+      "description": "Routes subagent model/effort by task class (raises, xhigh cap, checked lowerings) and guards messages between sessions"
+    },
+    {
+      "name": "agent-status",
+      "source": "./agent-status",
+      "description": "/agent-status: pane, band and toasts for the health of external coding agents and their models (bring your own health script)"
+    },
+    {
+      "name": "commit-queue",
+      "source": "./commit-queue",
+      "description": "Band of changes waiting for review in your git repos; /review-commits commits one group at a time, as you, after you approve"
+    },
+    {
+      "name": "read-once",
+      "source": "./read-once",
+      "description": "Refuses a whole-file re-read of a file this session already read and that has not changed since"
     }
   ]
 }

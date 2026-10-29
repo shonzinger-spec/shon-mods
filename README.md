@@ -51,6 +51,10 @@ In the desktop app: click + next to the prompt box, then Plugins, Add marketplac
 | `friction-review` | Weekly report of what keeps going wrong in your sessions; amber band while unread, /friction for the top patterns |
 | `one-chat-guard` | Band when a new chat looks like the same task as an open chat; offers to open that one |
 | `brain-sync` | /brain: pane showing whether every chat is saved to the second brain; reruns failed saves |
+| `conductor` | Routes subagent model and effort by task class (raises, xhigh cap, checked lowerings) and guards messages between sessions; /conductor pane |
+| `agent-status` | /agent-status: pane, band and toasts for whether each external coding agent works and on which model (needs your own health script, see its README) |
+| `commit-queue` | Band "N changes waiting for review in R repos"; /review-commits shows each group's diffstat and commits it as you only after you approve |
+| `read-once` | Refuses a whole-file Read of a file already read this session and unchanged since, so the same text is not paid for twice |
 
 Each mod has its own README with what it reads, writes and how to test it.
 

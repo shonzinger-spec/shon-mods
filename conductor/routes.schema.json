@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "conductor/routes.schema.json",
+  "title": "conductor routing table",
+  "description": "Validated by hand in hooks/routes.ts with the same rules. Class key order is the keyword tie-break order.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "classes", "agent_map"],
+  "properties": {
+    "version": { "const": 1 },
+    "classes": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["verdict", "skeptic2", "spec_code", "review", "checked_fix", "run_report", "extract", "drafts", "final_pack", "locate", "mech_edit", "unclassified"],
+      "properties": {
+        "verdict": { "$ref": "#/$defs/route" }, "skeptic2": { "$ref": "#/$defs/route" },
+        "spec_code": { "$ref": "#/$defs/route" }, "review": { "$ref": "#/$defs/route" },
+        "checked_fix": { "$ref": "#/$defs/route" }, "run_report": { "$ref": "#/$defs/route" },
+        "extract": { "$ref": "#/$defs/route" }, "drafts": { "$ref": "#/$defs/route" },
+        "final_pack": { "$ref": "#/$defs/route" }, "locate": { "$ref": "#/$defs/route" },
+        "mech_edit": { "$ref": "#/$defs/route" },
+        "unclassified": { "allOf": [{ "$ref": "#/$defs/route" }, { "properties": { "model": { "const": "inherit" } } }] }
+      }
+    },
+    "agent_map": {
+      "type": "object",
+      "propertyNames": { "pattern": "^[A-Za-z0-9_.-]+:[A-Za-z0-9_.-]+$" },
+      "additionalProperties": { "$ref": "#/$defs/routableClass" },
+      "description": "Decisive: agent types whose job is the class itself."
+    },
+    "agent_fallback": {
+      "type": "object",
+      "propertyNames": { "pattern": "^[A-Za-z0-9_.-]+:[A-Za-z0-9_.-]+$" },
+      "additionalProperties": { "$ref": "#/$defs/routableClass" },
+      "description": "General maker agents: used only when no keyword class hit; never an xhigh class (checked in routes.ts)."
+    }
+  },
+  "$defs": {
+    "className": { "enum": ["verdict", "skeptic2", "spec_code", "review", "checked_fix", "run_report", "extract", "drafts", "final_pack", "locate", "mech_edit", "unclassified"] },
+    "routableClass": { "allOf": [{ "$ref": "#/$defs/className" }, { "not": { "const": "unclassified" } }] },
+    "route": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["model", "mode", "keywords"],
+      "properties": {
+        "model": { "enum": ["opus", "sonnet", "haiku", "fable", "inherit"] },
+        "effort": { "enum": ["low", "medium", "high", "xhigh"], "description": "never max; the cap is xhigh" },
+        "mode": { "enum": ["enforce", "suggest", "checked"] },
+        "keywords": { "type": "array", "items": { "type": "string", "pattern": "^[a-z0-9]+\\*?( [a-z0-9]+\\*?)*$" } },
+        "overrides_agent": { "type": "boolean" },
+        "strong_keywords": { "type": "array", "minItems": 1, "items": { "type": "string", "pattern": "^[a-z0-9]+\\*?( [a-z0-9]+\\*?)*$" }, "description": "xhigh classes only (checked in routes.ts): one hit is enough; weak keywords need two" },
+        "demote_to": { "$ref": "#/$defs/className", "description": "another class, not xhigh (checked in routes.ts)" }
+      },
+      "if": { "properties": { "model": { "const": "haiku" } } },
+      "then": { "not": { "required": ["effort"] } }
+    }
+  }
+}

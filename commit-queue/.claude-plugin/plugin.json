@@ -1,0 +1,9 @@
+{
+  "name": "commit-queue",
+  "version": "0.1.0",
+  "author": {
+    "name": "shon"
+  },
+  "description": "A band \"N changes waiting for review in R repos\" over your configured git repos, and /review-commits: per-group diffstat, then commits one group at a time only after you answer Commit, as you, no Claude trailer, never pushes, never stages secret-looking files.",
+  "types": "./types/index.d.ts"
+}
