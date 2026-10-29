@@ -171,3 +171,138 @@ test('session start registers /experiments', async ($, on) => {
   await $.session.start({ cwd: '/h', surface: 'desktop', isInteractive: true })
   expect(names).toEqual(['experiments'])
 })
+
+// ---- /experiments open ----
+
+const NOW = Date.UTC(2026, 9, 29, 12, 0, 0)
+const sec = (daysAgo: number): number => Math.floor((NOW - daysAgo * 86_400_000) / 1000)
+
+type OpenOpts = {
+  files?: Files
+  scan?: Record<string, string> // root -> find stdout
+  findExit?: number
+  store?: Map<string, unknown>
+  roots?: string[]
+}
+
+function openEngine(on: On, o: OpenOpts = {}) {
+  const files = o.files ?? {}
+  const store = o.store ?? new Map<string, unknown>()
+  const finds: string[][] = []
+  mock.env(on, { HOME: '/h' })
+  on('clock.now', () => ({ value: NOW }))
+  on('fs.stat', (_, e) => {
+    if ((o.roots ?? ['/h/Trading', '/h/propfarm-2026']).includes(e.path)) return { value: { kind: 'directory', size: 0, mtimeMs: 0, isLink: false } }
+    const t = files[e.path]
+    return t === undefined ? { deny: 'ENOENT' } : { value: { kind: 'file', size: t.length, mtimeMs: 0, isLink: false } }
+  })
+  on('fs.read', (_, e) => {
+    const t = files[e.path]
+    return t === undefined ? { deny: 'ENOENT' } : { value: t }
+  })
+  on('process.run', (_, e) => {
+    if (e.argv[0] === 'find') finds.push([...e.argv])
+    const out = e.argv[0] === 'find' ? ((o.scan ?? {})[e.argv[1] as string] ?? '') : ''
+    return { value: { exitCode: e.argv[0] === 'find' ? (o.findExit ?? 0) : 0, stdout: out, stderr: '', isStdoutTruncated: false, isStderrTruncated: false } }
+  })
+  on('store.get', (_, e) => ({ value: store.get((e as { key: string }).key) }))
+  on('store.set', (_, e) => {
+    store.set((e as { key: string }).key, (e as { value: unknown }).value)
+    return { value: undefined }
+  })
+  return { store, finds }
+}
+
+const SCAN_T = [
+  `${sec(2)} /h/Trading/d/mnq/prereg/rerun-orb.json`,
+  `${sec(40)} /h/Trading/k/prereg/kronos-v1.json`,
+  `${sec(39)} /h/Trading/k/prereg/kronos-v1.result.json`,
+  `${sec(30)} /h/Trading/n/prereg/noise.json`,
+  `${sec(29)} /h/Trading/n/prereg/noise.result.json`,
+].join('\n')
+const SCAN_P = [
+  `${sec(21)} /h/propfarm-2026/PREREG_v54.sha256`,
+  `${sec(25)} /h/propfarm-2026/PREREGISTRATION_v54.md`,
+  `${sec(20)} /h/propfarm-2026/restart/PREREG_v43.sha256`, // nested legacy copy: not listed
+].join('\n')
+
+test('/experiments open lists open and unlogged preregs, skips one with a sibling verdict.json, scans macOS find', async ($, on) => {
+  const { finds } = openEngine(on, {
+    scan: { '/h/Trading': SCAN_T, '/h/propfarm-2026': SCAN_P },
+    files: {
+      '/h/Trading/d/mnq/prereg/rerun-orb.json': JSON.stringify({ slug: 'rerun-orb', created_at: new Date(NOW - 5 * 86_400_000).toISOString() }),
+      '/h/Trading/k/verdict.json': JSON.stringify({ schema: 'verdict/2', slug: 'kronos-v1', verdict: 'INCONCLUSIVE' }),
+    },
+  })
+  const t = text(await $.command.run(cmd('open')))
+  const lines = t.split('\n')
+  expect(lines[0]).toBe('prereg: 3 waiting on a verdict (2 open, 1 unlogged)')
+  // oldest first: v54 21d, rerun-orb 5d (created_at, not the 2d file time), noise 29d unlogged -> noise first
+  expect(lines[1]).toContain('noise  29d  unlogged')
+  expect(lines[2]).toContain('v54  21d  open  [legacy]')
+  expect(lines[3]).toContain('rerun-orb  5d  open  [json] /h/Trading/d/mnq')
+  expect(t).not.toContain('kronos-v1  ')
+  expect(t).not.toContain('v43')
+  expect(finds.length).toBe(2)
+  expect(finds[0]).toEqual([
+    'find', '/h/Trading', '-maxdepth', '7', '(', '-path', '*/prereg/*.json', '-o', '-name', 'PREREGISTRATION_*.md', '-o', '-name', 'PREREG_*.sha256', ')',
+    '-not', '-path', '*/node_modules/*', '-not', '-path', '*/.git/*', '-exec', 'stat', '-f', '%m %N', '{}', '+',
+  ])
+})
+
+test('a ledger row with the slug makes the prereg done; open all shows its verdict', async ($, on) => {
+  openEngine(on, {
+    scan: { '/h/Trading': SCAN_T },
+    files: { [LEDGER]: jsonl([row({ date: '2026-10-20T10:00:00+00:00', slug: 'noise', idea: 'noise-mom', verdict: 'PASS' })]) },
+  })
+  const t = text(await $.command.run(cmd('open')))
+  expect(t).not.toContain('noise  ')
+  const all = text(await $.command.run(cmd('open all')))
+  expect(all).toContain('noise  30d  done PASS')
+  expect(all).toContain('done:')
+})
+
+test('/experiments open ack hides a prereg, by unique suffix; an ambiguous suffix lists matches; unack restores', async ($, on) => {
+  const { store } = openEngine(on, {
+    scan: {
+      '/h/propfarm-2026': [`${sec(9)} /h/propfarm-2026/PREREG_v62_A1.sha256`, `${sec(9)} /h/propfarm-2026/PREREG_v58_A1.sha256`, `${sec(8)} /h/propfarm-2026/PREREG_v54.sha256`].join('\n'),
+    },
+  })
+  const amb = text(await $.command.run(cmd('open ack A1')))
+  expect(amb).toContain('"A1" is ambiguous: v58_A1, v62_A1')
+  expect(store.get('acked')).toBeUndefined()
+  const ack = text(await $.command.run(cmd('open ack 62_A1')))
+  expect(ack).toContain('acked v62_A1')
+  expect(ack).toContain('prereg: 2 waiting')
+  expect(ack).toContain('1 acked and hidden')
+  expect(store.get('acked')).toEqual(['v62_A1'])
+  expect(text(await $.command.run(cmd('open')))).not.toContain('v62_A1  ')
+  const un = text(await $.command.run(cmd('open unack v62_A1')))
+  expect(un).toContain('unacked v62_A1')
+  expect(un).toContain('prereg: 3 waiting')
+  expect(text(await $.command.run(cmd('open ack nothing')))).toContain('no prereg matches "nothing"')
+  expect(text(await $.command.run(cmd('open ack')))).toContain('ack needs a slug or tag')
+  expect(text(await $.command.run(cmd('open bogus')))).toContain('usage: /experiments open')
+})
+
+test('find exiting non-zero with no output prints could not scan; with output it is used', async ($, on) => {
+  openEngine(on, { findExit: 1 })
+  expect(text(await $.command.run(cmd('open')))).toContain('prereg: could not scan (find exited 1 under /h/Trading)')
+})
+
+test('find exiting non-zero with output is a partial scan, still listed', async ($, on) => {
+  openEngine(on, { findExit: 1, roots: ['/h/Trading'], scan: { '/h/Trading': `${sec(10)} /h/Trading/PREREG_t1.sha256` } })
+  expect(text(await $.command.run(cmd('open')))).toContain('t1  10d  open')
+})
+
+test('no scan roots on the machine says so', async ($, on) => {
+  openEngine(on, { roots: [] })
+  expect(text(await $.command.run(cmd('open')))).toContain('could not scan (none of ~/Trading, ~/propfarm-2026 exists)')
+})
+
+test('/experiments with no argument never runs find, and "open" must be the first word to be the subcommand', async ($, on) => {
+  const { finds } = openEngine(on, { files: { [LEDGER]: BASE } })
+  expect(text(await $.command.run(cmd()))).toContain('4 rows (~/Trading/_ledger/experiments.jsonl)')
+  expect(text(await $.command.run(cmd('orb-nq')))).toContain('2 rows for idea "orb-nq"')
+  expect(finds.length).toBe(0)
+})

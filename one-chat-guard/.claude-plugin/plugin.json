@@ -1,0 +1,7 @@
+{
+  "name": "one-chat-guard",
+  "version": "0.1.0",
+  "author": { "name": "Shon Zinger" },
+  "description": "Band above the prompt when a new chat looks like the same task as an open chat (same title, or same folder and a similar first prompt): offers to open that chat or keep this one. Never blocks or edits the prompt.",
+  "types": "./types/index.d.ts"
+}

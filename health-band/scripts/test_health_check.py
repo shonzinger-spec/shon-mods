@@ -180,5 +180,147 @@ class Stats(unittest.TestCase):
         self.assertEqual(res["stats"]["jobs"], [])
 
 
+GONE_LINE = "2026-10-28 18:30:14 ERR NQ.F try 7/8: [410] {\"detail\":\"Look at the new documentation: https://londonstrategicedge.com/docs/api\"}"
+
+
+class ForwardDataGap(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.mkdtemp()
+        self.orig = hc.job_logs
+
+    def tearDown(self):
+        import shutil
+        hc.job_logs = self.orig
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def log(self, name, text):
+        p = os.path.join(self.tmp, name)
+        with open(p, "w") as f:
+            f.write(text)
+        return p
+
+    def logs(self, cfg, pairs):
+        hc.job_logs = lambda rx: pairs
+        issues = []
+        hc.check_logs(cfg, dt.datetime(2026, 10, 29, 1, 0), issues)
+        return issues
+
+    def test_410_is_red_lse_gone_naming_the_migration_doc_and_429_stays_amber(self):
+        gone = self.log("run.err", GONE_LINE + "\n")
+        limit = self.log("lim.err", "daily request limit reached\n")
+        issues = self.logs({"label_regex": "."}, [("com.propfarm.livepractice", gone), ("com.propfarm.v62", limit)])
+        by = {i["check"]: i for i in issues}
+        self.assertEqual(by["lse-gone"]["level"], "red")
+        self.assertIn("LSE API v2 retired (HTTP 410)", by["lse-gone"]["text"])
+        self.assertIn("LSE_V3_MIGRATION.md", by["lse-gone"]["text"])
+        self.assertEqual(by["lse-gone"]["affects"], ["livepractice"])
+        self.assertEqual(by["lse-limit"]["level"], "amber")
+        self.assertNotIn("lse-key", by)
+
+    def test_410_in_several_logs_is_one_issue_with_every_name(self):
+        a = self.log("a.err", GONE_LINE + "\n")
+        b = self.log("b.err", GONE_LINE + "\n")
+        issues = self.logs({"label_regex": "."}, [("com.propfarm.livepractice", a), ("com.propfarm.claude4b", b)])
+        gone = [i for i in issues if i["check"] == "lse-gone"]
+        self.assertEqual(len(gone), 1)
+        self.assertEqual(gone[0]["affects"], ["livepractice", "claude4b"])
+
+    def test_an_old_410_line_in_a_recently_touched_log_is_ignored(self):
+        old = self.log("run.log", "2026-10-20 09:00:00 ET  live context build failed: [410] new documentation\n"
+                                   "2026-10-28 09:10:29 ET  live plan ok\n")
+        self.assertEqual(self.logs({"label_regex": "."}, [("com.propfarm.claude4b", old)]), [])
+
+    def test_extra_logs_are_scanned_like_job_logs(self):
+        d = os.path.join(self.tmp, "plans")
+        os.makedirs(d)
+        p = os.path.join(d, "run.log")
+        with open(p, "w") as f:
+            f.write("Your credit balance is too low\n" + GONE_LINE + "\n")
+        issues = self.logs({"label_regex": "^$", "extra_logs": [p]}, [])
+        self.assertEqual(sorted(i["check"] for i in issues), ["api-credit", "lse-gone"])
+        self.assertEqual([i for i in issues if i["check"] == "lse-gone"][0]["affects"], ["plans"])
+
+    def test_missing_extra_log_is_skipped(self):
+        self.assertEqual(self.logs({"label_regex": "^$", "extra_logs": [os.path.join(self.tmp, "nope.log")]}, []), [])
+
+    def test_a_stamped_credit_line_older_than_the_window_is_ignored(self):
+        p = self.log("run.log", "2026-10-05 12:53:11 ET  replay ERROR Your credit balance is too low\n2026-10-28 09:10:29 ET  live plan ok\n")
+        self.assertEqual(self.logs({"label_regex": "."}, [("com.propfarm.claude4b", p)]), [])
+
+    def test_the_410_is_found_even_when_the_displayed_error_is_cut(self):
+        long_err = "2026-10-26 09:25:21 ET  live 2026-10-26 context build failed: RuntimeError: LSE recent bars failed after 4 tries: LSEError('[410] Look at the new documentation')"
+        cfg = self.fake_forward([self.job(name="Lil Fish 4b", last_exit=1, errors=[long_err])])
+        issues = []
+        hc.check_jobs(cfg, issues)
+        self.assertIn("[410]", issues[0]["detail"])
+        issues.append({"level": "red", "check": "lse-gone", "text": "x", "affects": []})
+        out = hc.group_causes(issues)
+        self.assertEqual([i["check"] for i in out], ["lse-gone"])
+        self.assertEqual(out[0]["affects"], ["Lil Fish 4b"])
+
+    def test_grouping_collapses_410_job_rows_into_the_cause_and_sorts_red_first(self):
+        issues = [
+            {"level": "amber", "check": "lse-limit", "text": "LSE daily request limit hit"},
+            {"level": "red", "check": "job", "subject": "livepractice", "text": "forward job livepractice: last exit 1: ERR NQ.F [410] x"},
+            {"level": "red", "check": "job", "subject": "oftick", "text": "forward job oftick: missed run due Mon 08:00"},
+            {"level": "red", "check": "job", "subject": "claude4b", "text": "forward job claude4b: last exit 1: LSE recent bars failed [410]"},
+            {"level": "red", "check": "lse-gone", "text": "LSE API v2 retired (HTTP 410)", "affects": ["livepractice"]},
+        ]
+        out = hc.group_causes(issues)
+        self.assertEqual([i["check"] for i in out], ["lse-gone", "job", "lse-limit"])
+        self.assertEqual(out[0]["affects"], ["livepractice", "claude4b"])
+        self.assertTrue(out[0]["text"].endswith(" -- affects: livepractice, claude4b"))
+        self.assertEqual(hc.group_causes(out)[0]["text"], out[0]["text"])  # idempotent
+        self.assertEqual(out[1]["subject"], "oftick")
+        self.assertEqual(len(issues), 5)  # input untouched
+
+    def test_without_lse_gone_nothing_is_collapsed_but_red_still_sorts_first(self):
+        issues = [{"level": "amber", "check": "feed", "text": "a"},
+                  {"level": "red", "check": "job", "subject": "x", "text": "forward job x: last exit 1: [410]"}]
+        self.assertEqual([i["check"] for i in hc.group_causes(issues)], ["job", "feed"])
+
+    def fake_forward(self, jobs):
+        p = os.path.join(self.tmp, "fake_forward.py")
+        with open(p, "w") as f:
+            f.write(f"JOBS = {jobs!r}\ndef collect(*a, **k):\n    return {{'jobs': JOBS}}\n")
+        return {"forward_pane": p}
+
+    def job(self, **kw):
+        base = {"name": "j", "stale": False, "stale_reason": "", "last_exit": 0, "running": False, "errors": []}
+        base.update(kw)
+        return base
+
+    def test_job_row_appends_the_last_error_line_to_the_exit_text(self):
+        cfg = self.fake_forward([
+            self.job(name="restart live practice", last_exit=1, errors=["older", "ERR NQ.F try 7/8: [410] gone"]),
+            self.job(name="quiet", last_exit=0, errors=["old noise"]),
+            self.job(name="running", last_exit=1, running=True),
+            self.job(name="stale one", stale=True, stale_reason="missed run due Mon 08:00", errors=["x"]),
+            self.job(name="no errors", last_exit=2),
+        ])
+        issues = []
+        hc.check_jobs(cfg, issues)
+        self.assertEqual([i["subject"] for i in issues], ["restart live practice", "stale one", "no errors"])
+        self.assertEqual(issues[0]["text"], "forward job restart live practice: last exit 1: ERR NQ.F try 7/8: [410] gone")
+        self.assertEqual(issues[0]["detail"], "ERR NQ.F try 7/8: [410] gone")
+        self.assertEqual(issues[1]["text"], "forward job stale one: missed run due Mon 08:00")
+        self.assertEqual(issues[2]["text"], "forward job no errors: last exit 2")
+
+    def test_run_includes_the_data_flow_check_and_groups(self):
+        gone = self.log("run.err", GONE_LINE + "\n")
+        stale = self.log("x.parquet", "x")
+        os.utime(stale, (1.0e9, 1.0e9))
+        cfg = os.path.join(self.tmp, "cfg.json")
+        with open(cfg, "w") as f:
+            json.dump({"label_regex": "^$", "extra_logs": [gone], "lse_key": gone, "feeds": [],
+                       "data_flow": [{"name": "livepractice", "kind": "mtime_glob", "path": stale, "max_lag_business_days": 3}]}, f)
+        t = dt.datetime(2026, 10, 29, 0, 30).timestamp()
+        os.utime(gone, (t, t))
+        res = hc.run(cfg, now=dt.datetime(2026, 10, 29, 1, 0))
+        checks = [i["check"] for i in res["issues"]]
+        self.assertEqual(checks[0], "lse-gone")
+        self.assertIn("data-flow", checks)
+
+
 if __name__ == "__main__":
     unittest.main()

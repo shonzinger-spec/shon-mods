@@ -1,1 +1,9 @@
-{ "name": "experiment-ledger", "version": "0.1.0", "author": { "name": "shon" }, "description": "/experiments [idea]: reads the experiment ledger ~/Trading/_ledger/experiments.jsonl that write_verdict() appends to (policy rule experiment_ledger). No argument: row and verdict counts, the 15 newest rows (pf, t, p, basis, null, verdict, blocked rules) and the top 10 ideas. With an idea: its rows (newest 50), its latest verdict and whether kill-ledger treats it as killed (latest FAIL). Malformed lines are skipped and counted." }
+{
+  "name": "experiment-ledger",
+  "version": "0.2.0",
+  "author": {
+    "name": "shon"
+  },
+  "description": "/experiments [idea]: reads the experiment ledger ~/Trading/_ledger/experiments.jsonl that write_verdict() appends to (policy rule experiment_ledger). No argument: row and verdict counts, the 15 newest rows (pf, t, p, basis, null, verdict, blocked rules) and the top 10 ideas. With an idea: its rows (newest 50), its latest verdict and whether kill-ledger treats it as killed (latest FAIL). Malformed lines are skipped and counted. /experiments open (0.2.0): preregistrations with no verdict yet, oldest first, with age. Scans ~/Trading and ~/propfarm-2026 for <root>/prereg/<slug>.json (open until <slug>.result.json exists; then 'unlogged' until a ledger row or sibling verdict.json carries its slug) and legacy PREREGISTRATION_<tag>.md / PREREG_<tag>.sha256 (done once PREREG_<tag>_RESULT.sha256 exists). 'open all' adds done and acked rows; 'open ack|unack <slug|tag>' hides or restores one. A band above the prompt appears when an unacked pending prereg is 7+ days old (red at 30). macOS only.",
+  "types": "./types/index.d.ts"
+}

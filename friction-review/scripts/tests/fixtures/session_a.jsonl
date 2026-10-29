@@ -1,0 +1,19 @@
+{"type": "user", "sessionId": "sess-a", "timestamp": "2026-10-28T10:00:00.000Z", "message": {"role": "user", "content": "try again"}}
+{"type": "assistant", "sessionId": "sess-a", "timestamp": "2026-10-28T10:01:00.000Z", "message": {"role": "assistant", "content": [{"type": "tool_use", "id": "b1", "name": "Bash", "input": {"command": "pytest -q"}}]}}
+{"type": "user", "sessionId": "sess-a", "timestamp": "2026-10-28T10:02:00.000Z", "message": {"role": "user", "content": [{"type": "tool_result", "tool_use_id": "b1", "is_error": true, "content": "Exit code 1\nFAILED test_x"}]}}
+{"type": "assistant", "sessionId": "sess-a", "timestamp": "2026-10-28T10:03:00.000Z", "message": {"role": "assistant", "content": [{"type": "tool_use", "id": "b2", "name": "Bash", "input": {"command": "pytest -q"}}]}}
+{"type": "user", "sessionId": "sess-a", "timestamp": "2026-10-28T10:04:00.000Z", "message": {"role": "user", "content": [{"type": "tool_result", "tool_use_id": "b2", "is_error": true, "content": "Exit code 1\nFAILED test_x"}]}}
+{"type": "assistant", "sessionId": "sess-a", "timestamp": "2026-10-28T10:05:00.000Z", "message": {"role": "assistant", "content": [{"type": "tool_use", "id": "b3", "name": "Bash", "input": {"command": "pytest -q"}}]}}
+{"type": "user", "sessionId": "sess-a", "timestamp": "2026-10-28T10:06:00.000Z", "message": {"role": "user", "content": [{"type": "tool_result", "tool_use_id": "b3", "is_error": true, "content": "Exit code 1\nFAILED test_x"}]}}
+{"type": "assistant", "sessionId": "sess-a", "timestamp": "2026-10-28T10:07:00.000Z", "message": {"role": "assistant", "content": [{"type": "tool_use", "id": "w1", "name": "Write", "input": {"file_path": "/tmp/x"}}]}}
+{"type": "user", "sessionId": "sess-a", "timestamp": "2026-10-28T10:08:00.000Z", "message": {"role": "user", "content": [{"type": "tool_result", "tool_use_id": "w1", "is_error": true, "content": "<tool_use_error>No such tool available: Write</tool_use_error>"}]}}
+{"type": "assistant", "sessionId": "sess-a", "timestamp": "2026-10-28T10:09:00.000Z", "message": {"role": "assistant", "content": [{"type": "tool_use", "id": "e1", "name": "Edit", "input": {"file_path": "/tmp/x"}}]}}
+{"type": "user", "sessionId": "sess-a", "timestamp": "2026-10-28T10:10:00.000Z", "message": {"role": "user", "content": [{"type": "tool_result", "tool_use_id": "e1", "is_error": true, "content": "File has not been read yet. Read it first before writing to it."}]}}
+{"type": "user", "sessionId": "sess-a", "timestamp": "2026-10-28T10:11:00.000Z", "message": {"role": "user", "content": [{"type": "tool_result", "tool_use_id": "e1", "is_error": false, "content": "fine, it worked"}]}}
+{"type": "assistant", "sessionId": "sess-a", "timestamp": "2026-10-28T10:12:00.000Z", "message": {"role": "assistant", "content": [{"type": "text", "text": "API Error: This request would exceed your account's rate limit."}]}, "isApiErrorMessage": true, "error": "rate_limit"}
+{"type": "system", "sessionId": "sess-a", "timestamp": "2026-10-28T10:13:00.000Z", "subtype": "api_error", "error": {"formatted": "Connection error. Retrying in 2 seconds"}}
+{"type": "attachment", "sessionId": "sess-a", "timestamp": "2026-10-28T10:14:00.000Z", "attachment": {"type": "hook_non_blocking_error", "stderr": "hook exploded", "command": "node x.js", "hookName": "PreToolUse:Bash"}}
+{"type": "attachment", "sessionId": "sess-a", "timestamp": "2026-10-28T10:15:00.000Z", "attachment": {"type": "hook_stopped_continuation", "command": "node y.js"}}
+{"type": "attachment", "sessionId": "sess-a", "timestamp": "2026-10-28T10:16:00.000Z", "attachment": {"type": "hook_success", "command": "node z.js"}}
+{"type": "user", "sessionId": "sess-a", "timestamp": "2026-10-28T10:17:00.000Z", "message": {"role": "user", "content": "Is everything finished?"}}
+{"type": "user", "sessionId": "sess-a", "timestamp": "2026-10-28T10:18:00.000Z", "message": {"role": "user", "content": "is everything finished?"}}

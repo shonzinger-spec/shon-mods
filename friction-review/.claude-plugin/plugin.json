@@ -1,0 +1,7 @@
+{
+  "name": "friction-review",
+  "version": "0.1.2",
+  "author": { "name": "shon" },
+  "description": "Weekly friction review. A Friday launchd job scans the last 7 days of transcripts for the things that keep going wrong (missing tools, rate-limit deaths, repeated failures, corrections) plus unused plugins, writes a report and asks whether to open it. This mod shows an amber band while the report is unread, /friction prints the top patterns, and the session is told once to offer a read.",
+  "types": "./types/index.d.ts"
+}

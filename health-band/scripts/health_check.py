@@ -3,8 +3,13 @@
 
 red   : Anthropic API credit errors in launchd logs; ~/.lse_key missing/empty or
         rejected (401/403); a live feed stale beyond its market-minute limit;
-        a forward job stale or exited non-zero.
-amber : LSE daily request limit hit; a feed unreadable.
+        a forward job stale or exited non-zero; a Claude desktop scheduled task or a
+        secondbrain/autorank/youtube launchd job that missed a run or exited non-zero (watchdog.py);
+        the AutoRank backup stale >36 h, a missing/empty/rejected headless Claude token, a
+        revoked YouTube sign-in (creds.py); LSE API v2 gone (HTTP 410, `lse-gone`, shown first, with
+        the forward jobs it breaks in `affects`); a forward job's data older than its limit even
+        though the job exits 0 (dataflow.py: livepractice, ticks, oftick, claude4b context failures).
+amber : LSE daily request limit hit; a feed unreadable; a data-flow source missing.
 stats (always drawn): LSE requests today, helper-agent jobs today, fixed per-turn
         context overhead of plugins and skills; each null when its source is unreadable.
 Usage: health_check.py [--config health.json] [--text]
@@ -18,6 +23,9 @@ ET = ZoneInfo("America/New_York")
 CREDIT = re.compile(r"credit balance is too low|insufficient[_ ]quota|purchase (?:more )?credits|billing_error|Your credit balance", re.I)
 LSE_AUTH = re.compile(r"(?:LSE|lse|vault|api\.lse)[^\n]{0,120}\b(?:401|403)\b|\b(?:401|403)\b[^\n]{0,120}(?:LSE|lse|vault)|invalid api key|key (?:has )?expired", re.I)
 LSE_LIMIT = re.compile(r"daily request limit reached", re.I)
+LSE_GONE = re.compile(r"\[410\]|new documentation|londonstrategicedge\.com/docs", re.I)
+LSE_GONE_TEXT = "LSE API v2 retired (HTTP 410): v3 port needed (see ~/Trading/_scratch/agent-pipeline/LSE_V3_MIGRATION.md)"
+STAMP = re.compile(r"^\s*(\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2})")
 
 
 def expand(p):
@@ -50,10 +58,23 @@ def tail(path, nbytes=60000):
         return []
 
 
+def line_time(line):
+    m = STAMP.match(line)
+    if not m:
+        return None
+    try:
+        return dt.datetime.fromisoformat(m.group(1))
+    except ValueError:
+        return None
+
+
 def check_logs(cfg, now, issues):
     window = dt.timedelta(hours=float(cfg.get("log_window_hours", 24)))
     seen = set()
-    for label, path in job_logs(cfg.get("label_regex", ".")):
+    gone = []
+    sources = job_logs(cfg.get("label_regex", ".")) + [
+        (os.path.basename(os.path.dirname(expand(p))) or "log", expand(p)) for p in cfg.get("extra_logs", [])]
+    for label, path in sources:
         try:
             mt = dt.datetime.fromtimestamp(os.path.getmtime(path))
         except OSError:
@@ -62,14 +83,20 @@ def check_logs(cfg, now, issues):
             continue
         lines = tail(path)
         name = label.split(".")[-1]
+        # a log touched today can still hold last week's error: a stamped line must itself be inside the window
+        fresh = [ln for ln in lines if (line_time(ln) is None or now - line_time(ln) <= window)]
         for check, rx, level, what in (("api-credit", CREDIT, "red", "Anthropic API credit error"),
                                        ("lse-key", LSE_AUTH, "red", "LSE key rejected"),
                                        ("lse-limit", LSE_LIMIT, "amber", "LSE daily request limit hit")):
-            hit = next((ln for ln in reversed(lines) if rx.search(ln)), None)
+            hit = next((ln for ln in reversed(fresh) if rx.search(ln)), None)
             if hit and (check, name) not in seen:
                 seen.add((check, name))
                 issues.append({"level": level, "check": check,
                                "text": f"{what} in {name} log ({int((now - mt).total_seconds() // 3600)}h ago): {hit.strip()[:120]}"})
+        if any(LSE_GONE.search(ln) for ln in fresh) and name not in gone:
+            gone.append(name)
+    if gone:
+        issues.append({"level": "red", "check": "lse-gone", "text": LSE_GONE_TEXT, "affects": gone})
 
 
 def check_lse_key(cfg, issues):
@@ -164,8 +191,61 @@ def check_jobs(cfg, issues):
     spec = importlib.util.spec_from_file_location("forward_status", p)
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
-    for name, why in mod.stale_jobs():
-        issues.append({"level": "red", "check": "job", "text": f"forward job {name}: {why}"})
+    for j in mod.collect()["jobs"]:  # same rules as forward_status.stale_jobs, plus the cause
+        detail = ""  # full error line, not drawn; group_causes reads it
+        if j["stale"]:
+            why = j["stale_reason"]
+        elif j["last_exit"] not in (0, None) and not j["running"]:
+            why = f"last exit {j['last_exit']}"
+            if j.get("errors"):
+                detail = j["errors"][-1].strip()
+                why += f": {STAMP.sub('', detail, count=1).replace(' ET ', '', 1).strip()[:110]}"
+        else:
+            continue
+        issues.append({"level": "red", "check": "job", "subject": j["name"], "text": f"forward job {j['name']}: {why}",
+                       "detail": detail})
+
+
+def check_watchdog(cfg, now, issues):
+    spec = importlib.util.spec_from_file_location("watchdog", os.path.join(HERE, "watchdog.py"))
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    mod.check(cfg, now, issues)
+
+
+def check_creds(cfg, now, issues):
+    spec = importlib.util.spec_from_file_location("creds", os.path.join(HERE, "creds.py"))
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    mod.check(cfg, now, issues)
+
+
+def check_dataflow(cfg, now, issues):
+    spec = importlib.util.spec_from_file_location("dataflow", os.path.join(HERE, "dataflow.py"))
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    mod.check(cfg, now, issues)
+
+
+def group_causes(issues):
+    """Red before amber, the shared cause first. When an `lse-gone` issue exists, job rows whose
+    error text carries the 410 are folded into it (affects += their job names). Returns a new list."""
+    out = [dict(i) for i in issues]
+    gone = next((i for i in out if i["check"] == "lse-gone"), None)
+    if gone:
+        affects = list(gone.get("affects", []))
+        keep = []
+        for i in out:
+            if i["check"] == "job" and LSE_GONE.search(i["text"] + i.get("detail", "")):
+                if i.get("subject") and i["subject"] not in affects:
+                    affects.append(i["subject"])
+            else:
+                keep.append(i)
+        gone["affects"] = affects
+        if affects:  # the UI surfaces show only `text`, so name the affected jobs there
+            gone["text"] = gone["text"].split(" -- affects:")[0] + " -- affects: " + ", ".join(affects)
+        out = keep
+    return sorted(out, key=lambda i: (i["check"] != "lse-gone", i["level"] != "red"))  # stable
 
 
 def lse_today(cfg, now_aware):
@@ -271,11 +351,14 @@ def run(cfg_path=DEFAULT_CFG, now=None):
     now_aware = now.astimezone()
     issues = []
     for fn, args in ((check_logs, (cfg, now, issues)), (check_lse_key, (cfg, issues)),
-                     (check_feeds, (cfg, now_aware, issues)), (check_jobs, (cfg, issues))):
+                     (check_feeds, (cfg, now_aware, issues)), (check_jobs, (cfg, issues)),
+                     (check_watchdog, (cfg, now, issues)), (check_creds, (cfg, now, issues)),
+                     (check_dataflow, (cfg, now, issues))):
         try:
             fn(*args)
         except Exception as e:  # a broken check reports itself
             issues.append({"level": "amber", "check": fn.__name__, "text": f"{fn.__name__} failed: {str(e)[:100]}"})
+    issues = group_causes(issues)
     level = "red" if any(i["level"] == "red" for i in issues) else ("amber" if issues else "ok")
     return {"level": level, "issues": issues, "checked_at": now_aware.isoformat(timespec="seconds"),
             "stats": stats(cfg, now_aware)}

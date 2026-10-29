@@ -47,6 +47,10 @@ In the desktop app: click + next to the prompt box, then Plugins, Add marketplac
 | `paste-dedupe` | A paste repeated from an earlier prompt this session is sent as "same as message N" |
 | `usage-coach` | Weekly-limit coach: status line, pace band, /budget, /next and a task queue with measured cost per task |
 | `memory-guard` | Memory meter in the prompt footer, warn/critical band with Not now / Let Claude clean it (graceful quit only, after a confirm), /mem lists top users by app, chat and MCP server |
+| `needs-you` | /needs-you: pane of open chats that are stalled, waiting on you (with the question), or done |
+| `friction-review` | Weekly report of what keeps going wrong in your sessions; amber band while unread, /friction for the top patterns |
+| `one-chat-guard` | Band when a new chat looks like the same task as an open chat; offers to open that one |
+| `brain-sync` | /brain: pane showing whether every chat is saved to the second brain; reruns failed saves |
 
 Each mod has its own README with what it reads, writes and how to test it.
 

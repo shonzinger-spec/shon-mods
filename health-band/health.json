@@ -1,5 +1,5 @@
 {
-  "_comment": "health-band checks. Feeds: newest bar (bar start + bar_minutes) must be within max_stale_market_min CME Globex minutes (Sun 18:00 -> Fri 17:00 ET, daily halt 17:00-18:00 ET; exchange holidays not modelled). ts: a column name, or 'index' for the parquet's index. forward_pane: the forward-pane collector reused for stale jobs. Gauges (always drawn): lse_calls_log lines dated today (local) out of lse_daily_limit; agent_logs = dispatch.sh logs started today or still running; profile_script's `measure` desc_chars plus user_skills descriptions, /4 = tokens per turn.",
+  "_comment": "health-band checks. Feeds: newest bar (bar start + bar_minutes) must be within max_stale_market_min CME Globex minutes (Sun 18:00 -> Fri 17:00 ET, daily halt 17:00-18:00 ET; exchange holidays not modelled). ts: a column name, or 'index' for the parquet's index. forward_pane: the forward-pane collector reused for stale jobs. Gauges (always drawn): lse_calls_log lines dated today (local) out of lse_daily_limit; agent_logs = dispatch.sh logs started today or still running; profile_script's `measure` desc_chars plus user_skills descriptions, /4 = tokens per turn. watchdog: scheduled_tasks_glob = the desktop app's scheduled-tasks.json (a cron task whose lastRunAt is older than its latest due time, 15 min grace, is red; the app keeps no per-run status so failed runs are not visible); watchdog_regex = launchd labels checked for non-zero exit / missed runs, minus label_regex (the forward pane covers those); success_markers = a file whose mtime is the job's last success (max_age_hours); known_issues = label -> text, shown as one amber row instead of red while the job is unhealthy. creds.py: backup = newest `backed up` stamp in the log (red past max_age_hours, with the last .err line and the known_issues text for com.autorank.backup as the fix; that label is in skip_labels so the watchdog does not repeat it); oauth_token = the headless token file is only stat()ed (missing/empty red; red/amber from file age against an ASSUMED valid_days, warn_days before) and scan_logs (modified within 24 h) are scanned for auth-rejection text; youtube = token.json missing amber, invalid_grant/RefreshError in the log within 48 h red, token older than 6 days with no logged upload amber. lse-gone: a 410 / 'new documentation' line in a job log or extra_logs (stamped lines must be inside log_window_hours) is one red cause row listing the logs in `affects`; forward job rows with a 410 in their error text are folded into it. extra_logs = logs outside the plists' StandardOut/Err (restart/out_live/run.log is already livepractice's StandardOut, so it is not repeated here). Every log check ignores stamped lines older than log_window_hours. data_flow (dataflow.py): kinds mtime_glob | parquet_ts | json_field | log_match; limit max_lag_business_days (Mon-Fri days after the source date; weekends skipped, holidays not modelled) or max_lag_days (calendar). Paths verified on disk 2026-10-29: livepractice = data/live/*_live.parquet written by live_fetch.py (it refuses data older than 3 business days itself; out_live/*.parquet are derived caches); ticks = newest bar of of_NQ.F_1m.parquet, weekly Monday job so 10 days; oftick = status.json `updated` (ledger.csv only changes on trades); claude4b = `context build failed` in plans/run.log within 48 h.",
   "label_regex": "propfarm|mnq-mgc|claude4b|oftick|v62|lilfish",
   "log_window_hours": 24,
   "lse_key": "~/.lse_key",
@@ -9,10 +9,95 @@
   "profile_script": "~/.claude/mods-src/profile/scripts/profile.py",
   "user_skills": "~/.claude/skills/*/SKILL.md",
   "forward_pane": "~/.claude/mods-src/forward-pane/scripts/forward_status.py",
+  "scheduled_tasks_glob": "~/Library/Application Support/Claude/claude-code-sessions/*/*/scheduled-tasks.json",
+  "watchdog_regex": "^com\\.(secondbrain|propfarm|autorank|example\\.youtube)",
+  "success_markers": {},
+  "known_issues": {
+    "com.secondbrain.telegram": "awaiting Telegram bot token (reminders.md)",
+    "com.example.youtube-automation": "not loaded, awaiting YouTube Google OAuth (reminders.md)",
+    "com.autorank.backup": "grant Full Disk Access to /bin/bash for launchd, or move the target off iCloud (reminders.md)"
+  },
   "feeds": [
-    { "name": "MNQ 5m (observe)", "path": "~/mnq-mgc-research/data/processed/MNQ_5m.parquet", "ts": "timestamp", "bar_minutes": 5, "max_stale_market_min": 30 },
-    { "name": "MGC 5m (observe)", "path": "~/mnq-mgc-research/data/processed/MGC_5m.parquet", "ts": "timestamp", "bar_minutes": 5, "max_stale_market_min": 30 },
-    { "name": "MNQ 1m topstep (noise mom)", "path": "~/mnq-mgc-research/data/cache/noise_mom_MNQ_1m_topstep.parquet", "ts": "index", "bar_minutes": 1, "max_stale_market_min": 30 },
-    { "name": "MGC 5m topstep (ORB-PB)", "path": "~/mnq-mgc-research/data/cache/orbpb_MGC_5m_topstep.parquet", "ts": "index", "bar_minutes": 5, "max_stale_market_min": 30 }
+    {
+      "name": "MNQ 5m (observe)",
+      "path": "~/mnq-mgc-research/data/processed/MNQ_5m.parquet",
+      "ts": "timestamp",
+      "bar_minutes": 5,
+      "max_stale_market_min": 30
+    },
+    {
+      "name": "MGC 5m (observe)",
+      "path": "~/mnq-mgc-research/data/processed/MGC_5m.parquet",
+      "ts": "timestamp",
+      "bar_minutes": 5,
+      "max_stale_market_min": 30
+    },
+    {
+      "name": "MNQ 1m topstep (noise mom)",
+      "path": "~/mnq-mgc-research/data/cache/noise_mom_MNQ_1m_topstep.parquet",
+      "ts": "index",
+      "bar_minutes": 1,
+      "max_stale_market_min": 30
+    },
+    {
+      "name": "MGC 5m topstep (ORB-PB)",
+      "path": "~/mnq-mgc-research/data/cache/orbpb_MGC_5m_topstep.parquet",
+      "ts": "index",
+      "bar_minutes": 5,
+      "max_stale_market_min": 30
+    }
+  ],
+  "skip_labels": [
+    "com.autorank.backup"
+  ],
+  "backup": {
+    "log": "~/Library/Logs/autorank-backup.log",
+    "err": "~/Library/Logs/autorank-backup.err",
+    "max_age_hours": 36
+  },
+  "oauth_token": {
+    "path": "~/second-brain/secrets/claude_oauth_token",
+    "valid_days": 365,
+    "warn_days": 30,
+    "scan_logs": [
+      "~/second-brain/daily-brief/cron.log",
+      "~/Trading/_scratch/agent-pipeline/logs/*.log"
+    ]
+  },
+  "youtube": {
+    "token": "~/youtube_automation/credentials/token.json",
+    "log": "~/youtube_automation/logs/launchd.log"
+  },
+  "extra_logs": [
+    "~/propfarm-2026/lilfish/farm/claude4b/plans/run.log"
+  ],
+  "data_flow": [
+    {
+      "name": "livepractice",
+      "kind": "mtime_glob",
+      "path": "~/propfarm-2026/data/live/*_live.parquet",
+      "max_lag_business_days": 3
+    },
+    {
+      "name": "ticks",
+      "kind": "parquet_ts",
+      "path": "~/propfarm-2026/data/ticks/of_NQ.F_1m.parquet",
+      "ts": "ts",
+      "max_lag_days": 10
+    },
+    {
+      "name": "oftick forward",
+      "kind": "json_field",
+      "path": "~/propfarm-2026/forward_v62_oftick/out/status.json",
+      "field": "updated",
+      "max_lag_business_days": 2
+    },
+    {
+      "name": "claude4b context",
+      "kind": "log_match",
+      "path": "~/propfarm-2026/lilfish/farm/claude4b/plans/run.log",
+      "pattern": "context build failed",
+      "within_hours": 48
+    }
   ]
 }

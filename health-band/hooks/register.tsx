@@ -1,15 +1,34 @@
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register } from 'claude-code'
 
-import type { HealthReport } from '../types'
+import type { HealthIssue, HealthReport } from '../types'
 import { jobsText, lseColor, lseText, overheadText } from './stats'
 
 const report = atom({ plugin: 'health-band', key: 'report' } as const, null)
-const isHidden = atom({ plugin: 'health-band', key: 'isHidden' } as const, false)
 const EVERY_MS = 5 * 60 * 1000
 
 let isTicking = false
-let lastLevel = 'ok'
+// Red issues the last good check saw, digits folded so "12 days behind" -> "13 days behind" is the same issue.
+// null until the first good check, which only records: a restart never re-notifies what is already red.
+let knownRed: Set<string> | null = null
+
+const issueKey = (i: HealthIssue): string => `${i.check}|${i.text.replace(/\d+/g, '#')}`
+
+async function notifyNewRed($: EngineInterface, r: HealthReport): Promise<void> {
+  const red = r.issues.filter(i => i.level === 'red')
+  const prev = knownRed
+  knownRed = new Set(red.map(issueKey))
+  if (!prev) return
+  for (const i of red) {
+    if (prev.has(issueKey(i))) continue
+    // notify can reject (a hook's deny, a failed write); the band must not care
+    try {
+      await $.ui.notify(i.text, { title: 'health-band' })
+    } catch {
+      // nothing to do
+    }
+  }
+}
 
 async function check($: EngineInterface): Promise<HealthReport | null> {
   try {
@@ -17,9 +36,7 @@ async function check($: EngineInterface): Promise<HealthReport | null> {
     if (run.exitCode !== 0) throw new Error(run.stderr.trim().split('\n').pop() || `exit ${run.exitCode}`)
     const r = JSON.parse(run.stdout) as HealthReport
     await update($, report, () => r)
-    // a level that got worse shows again even if the band was hidden
-    if (r.level === 'red' && lastLevel !== 'red') await update($, isHidden, () => false)
-    lastLevel = r.level
+    await notifyNewRed($, r)
     return r
   } catch (err) {
     const r: HealthReport = {
@@ -50,55 +67,33 @@ export const register: Register = on => {
 
   on('command.run', { command: 'healthband' }, async $ => {
     const r = await check($)
-    await update($, isHidden, () => false)
     if (!r) return { text: 'health-band: no report' }
     const lines = r.issues.map(i => `${i.level === 'red' ? '🔴' : '🟡'} ${i.text}`)
     return { text: [`health-band: ${r.level.toUpperCase()} (${r.checked_at})`, ...(lines.length ? lines : ['🟢 all checks pass'])].join('\n') }
   })
 
+  // Issue rows live in the second-brain window (brain-sync); /healthband lists them. The band draws only the gauges.
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
     const r = await read($, report)
-    if (e.props.hasSurvey || !r) return next(e)
-    const isShowingIssues = r.level !== 'ok' && !(await read($, isHidden))
-    if (!isShowingIssues && !r.stats) return next(e)
-    const { Box, Button, Text } = $.ui.resolve(e)
-    const color = r.level === 'red' ? 'red' : 'yellow'
-    const shown = [...r.issues].sort((a, b) => (a.level === b.level ? 0 : a.level === 'red' ? -1 : 1)).slice(0, 3)
+    if (e.props.hasSurvey || !r || !r.stats) return next(e)
+    const { Box, Text } = $.ui.resolve(e)
     const s = r.stats
-    // the gauges stay drawn while the issues are hidden, so the bands beneath still draw
     const below = await next(e)
     return (
       <Box flexDirection="column">
-        {isShowingIssues &&
-          shown.map(i => (
-            <Text color={i.level === 'red' ? 'red' : 'yellow'}>
-              {i.level === 'red' ? '🔴' : '🟡'} {i.text}
-            </Text>
-          ))}
-        {isShowingIssues && (
-          <Box>
-            <Text color={color} dimColor>
-              {r.issues.length > 3 ? `+${r.issues.length - 3} more · ` : ''}/healthband for all{' '}
-            </Text>
-            <Button key="recheck" label="Recheck" onPress={() => check($)} />
-            <Button key="hide" label="Hide" onPress={() => update($, isHidden, () => true)} />
-          </Box>
-        )}
-        {s && (
-          <Box>
-            <Text color={lseColor(s.lse)} dimColor={!lseColor(s.lse)}>
-              {lseText(s.lse)}
-            </Text>
-            <Text dimColor>
-              {' | '}
-              {jobsText(s.jobs)}
-            </Text>
-            <Text dimColor>
-              {' | '}
-              {overheadText(s.overhead_tokens)}
-            </Text>
-          </Box>
-        )}
+        <Box>
+          <Text color={lseColor(s.lse)} dimColor={!lseColor(s.lse)}>
+            {lseText(s.lse)}
+          </Text>
+          <Text dimColor>
+            {' | '}
+            {jobsText(s.jobs)}
+          </Text>
+          <Text dimColor>
+            {' | '}
+            {overheadText(s.overhead_tokens)}
+          </Text>
+        </Box>
         {below}
       </Box>
     )

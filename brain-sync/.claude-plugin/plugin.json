@@ -1,0 +1,1 @@
+{ "name": "brain-sync", "version": "0.1.0", "author": { "name": "shon" }, "description": "Side pane that shows whether every Claude chat is saved in the second brain (backup, note, Melxis mel), rechecks every minute, pops up when a chat fails to save, and reruns the existing save jobs with backoff until it lands. /brain opens it.", "types": "./types/index.d.ts" }

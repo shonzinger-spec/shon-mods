@@ -1,0 +1,1 @@
+{ "enabled": true, "minJaccard": 0.55, "ignoreTitles": ["New chat", "Remote Control session (from a project)"] }

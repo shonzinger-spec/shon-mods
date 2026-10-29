@@ -1,0 +1,10 @@
+
+not json at all
+[1, 2, 3]
+"just a string"
+42
+{"type": "mystery", "timestamp": "2026-10-28T10:00:00.000Z"}
+{"type": "user"}
+{"type": "user", "message": 5}
+{"type": "assistant", "message": {"content": 7}}
+{"type": "user", "message": {"content": [1, "x", null, {"type": "tool_result"}]}}

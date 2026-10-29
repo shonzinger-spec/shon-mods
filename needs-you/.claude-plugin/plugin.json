@@ -1,0 +1,7 @@
+{
+  "name": "needs-you",
+  "version": "0.2.1",
+  "author": { "name": "Shon Zinger" },
+  "description": "/needs-you opens a pane of every open desktop chat as stalled, waiting on you (with the exact question) or done. Reads the app's own per-chat files and archives nothing. After a usage limit it shows the reset time and can send one continue message (button, or opt-in /needs-you auto on).",
+  "types": "./types/index.d.ts"
+}

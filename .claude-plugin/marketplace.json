@@ -139,6 +139,26 @@
       "name": "chat-tidy",
       "source": "./chat-tidy",
       "description": "Once a day backs up chat transcripts, then archives chats idle 14+ days (never pinned, running or open); /tidy to preview"
+    },
+    {
+      "name": "needs-you",
+      "source": "./needs-you",
+      "description": "/needs-you: pane of open chats that are stalled, waiting on you, or done"
+    },
+    {
+      "name": "friction-review",
+      "source": "./friction-review",
+      "description": "Weekly report of what keeps going wrong in your sessions, with an unread band"
+    },
+    {
+      "name": "one-chat-guard",
+      "source": "./one-chat-guard",
+      "description": "Band when a new chat looks like the same task as an open chat"
+    },
+    {
+      "name": "brain-sync",
+      "source": "./brain-sync",
+      "description": "/brain: pane showing whether every chat is saved to the second brain, reruns failed saves"
     }
   ]
 }
