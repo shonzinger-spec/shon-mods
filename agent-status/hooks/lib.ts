@@ -2,7 +2,7 @@ import type { Agent, Evt, Health } from '../types'
 
 export type Config = { script: string; intervalMinutes: number; eventMinutes: number }
 export const DEFAULTS: Config = {
-  script: '/path/to/agent_health.py',
+  script: '',
   intervalMinutes: 5,
   eventMinutes: 30,
 }

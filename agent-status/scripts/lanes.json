@@ -1,0 +1,76 @@
+{
+  "version": 1,
+  "note": "models[0] is the lane default and is always used. dispatch.sh auto-switches (context exhaustion) only to LATER entries with free=true. Pay-per-use models are free=false and need the user's OK. Model ids discovered with the CLIs' own listings (opencode models) on 2026-10-29.",
+  "lanes": {
+    "codex": {
+      "label": "Codex", "binary": "codex", "model_flag": "-m",
+      "models": [{"id": "gpt-5.6-terra", "label": "GPT-5.6 Terra", "free": true}],
+      "auth": {"cmd": ["login", "status"], "in": "logged in", "out": "not logged in"},
+      "fix": {"sign_in": "codex login", "install": "npm install -g @openai/codex", "credits_url": "https://chatgpt.com/codex/settings/usage"},
+      "ping": ["exec", "-m", "{model}", "-s", "read-only", "--skip-git-repo-check", "--ephemeral", "Reply with the single word OK"]
+    },
+    "cline": {
+      "label": "Cline", "binary": "cline", "model_flag": null,
+      "note": "model comes from ~/.cline/data/globalState.json (act mode, provider cline); dispatch passes no model flag. Pay-per-use via Cline credits.",
+      "models": [{"id": "deepseek/deepseek-v4-flash", "label": "DeepSeek V4 Flash (Cline credits)", "free": false}],
+      "auth": null,
+      "fix": {"sign_in": "cline auth", "install": "npm install -g cline", "credits_url": "https://app.cline.bot/dashboard"},
+      "ping": ["-y", "-c", "{cwd}", "Reply with the single word OK"]
+    },
+    "opencode": {
+      "label": "opencode", "binary": "opencode", "model_flag": "-m",
+      "models": [
+        {"id": "opencode/deepseek-v4.1-flash-free", "label": "DeepSeek V4.1 Flash (free)", "free": true},
+        {"id": "opencode/glm-5.3-flash-free", "label": "GLM 5.3 Flash (free)", "free": true},
+        {"id": "opencode/mimo-v2.6-flash-free", "label": "MiMo V2.6 Flash (free)", "free": true}
+      ],
+      "auth": {"cmd": ["auth", "list"], "count_re": "(\\d+) credentials?"},
+      "fix": {"sign_in": "opencode auth login", "install": "npm install -g opencode-ai", "credits_url": "https://opencode.ai/auth"},
+      "ping": ["run", "-m", "{model}", "Reply with the single word OK"]
+    },
+    "opencode-glm": {
+      "label": "opencode (GLM)", "binary": "opencode", "model_flag": "-m",
+      "models": [
+        {"id": "opencode/glm-5.3-flash-free", "label": "GLM 5.3 Flash (free)", "free": true},
+        {"id": "opencode/deepseek-v4.1-flash-free", "label": "DeepSeek V4.1 Flash (free)", "free": true},
+        {"id": "opencode/mimo-v2.6-flash-free", "label": "MiMo V2.6 Flash (free)", "free": true}
+      ],
+      "auth": {"cmd": ["auth", "list"], "count_re": "(\\d+) credentials?"},
+      "fix": {"sign_in": "opencode auth login", "install": "npm install -g opencode-ai", "credits_url": "https://opencode.ai/auth"},
+      "ping": ["run", "-m", "{model}", "Reply with the single word OK"]
+    },
+    "copilot": {
+      "label": "GitHub Copilot", "binary": "copilot", "model_flag": "--model",
+      "note": "no model listing without a session; chain is the plan default. Set COPILOT_MODEL to pin one. ",
+      "models": [{"id": "default", "label": "Copilot default model (student plan)", "free": true}],
+      "auth": null,
+      "fix": {"sign_in": "copilot login", "install": "npm install -g @github/copilot", "credits_url": "https://github.com/settings/billing"},
+      "ping": ["-C", "{cwd}", "--disable-client-telemetry", "-p", "Reply with the single word OK"]
+    },
+    "amp": {
+      "label": "Amp", "binary": "amp", "model_flag": null, "disabled": true,
+      "disabled_reason": "Disabled: out of credits and left off on purpose (pay-per-use).",
+      "models": [{"id": "default", "label": "Amp default (pay-per-use)", "free": false}],
+      "auth": null,
+      "fix": {"sign_in": "amp login", "install": "npm install -g @ampcode/cli", "credits_url": "https://ampcode.com/settings"},
+      "ping": null
+    },
+    "atlarix": {
+      "label": "Atlarix", "binary": "atlarix", "model_flag": null,
+      "models": [{"id": "default", "label": "Atlarix Core", "free": false}],
+      "auth": null,
+      "fix": {"sign_in": "atlarix login", "install": "npm install -g atlarix", "credits_url": "https://atlarix.dev"},
+      "ping": ["run", "--prompt", "Reply with the single word OK", "--workspace", "{cwd}", "--mode", "build", "--timeout", "60000"]
+    },
+    "claude-headless": {
+      "label": "Claude (nightly loops)", "binary": "claude", "model_flag": null, "dispatch": false,
+      "note": "Subscription login via ~/.config/claude/oauth_token; only existence, size and mtime are read. Loops use sonnet (maker) and opus (judge).",
+      "models": [{"id": "sonnet+opus", "label": "Sonnet (maker) + Opus (judge)", "free": false}],
+      "token_file": "~/.config/claude/oauth_token",
+      "run_glob": "~/agent-runs/*_selfimprove_*.md",
+      "auth": null,
+      "fix": {"sign_in": "claude setup-token", "install": "npm install -g @anthropic-ai/claude-code", "credits_url": "https://claude.ai/settings/usage"},
+      "ping": null
+    }
+  }
+}

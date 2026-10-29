@@ -1,5 +1,5 @@
 {
-  "script": "/path/to/agent_health.py",
+  "script": "",
   "intervalMinutes": 5,
   "eventMinutes": 30
 }

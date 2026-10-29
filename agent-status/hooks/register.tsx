@@ -88,7 +88,7 @@ export async function check($: EngineInterface, ping?: string): Promise<void> {
   }
   try {
     const cfg = await config($)
-    const argv = ['python3', cfg.script, '--json', ...(ping ? ['--ping', ping] : [])]
+    const argv = ['python3', cfg.script || `${$.plugin.root}/scripts/agent_health.py`, '--json', ...(ping ? ['--ping', ping] : [])]
     const run = await $.process.run(argv, { timeoutMs: ping ? 90_000 : 120_000 })
     if (run.exitCode !== 0) throw new Error(lastLine(run.stderr) || `exit ${run.exitCode}`)
     const parsed = parseHealth(run.stdout)

@@ -16,9 +16,11 @@ Shows, at a glance, whether the external coding agents (opencode, opencode-glm, 
 ## Config
 `config.json` beside the hooks folder:
 ```json
-{ "script": "/path/to/agent_health.py", "intervalMinutes": 5, "eventMinutes": 30 }
+{ "script": "", "intervalMinutes": 5, "eventMinutes": 30 }
 ```
 Contract of the script's JSON: `{checked_at, agents:[{id,name,model,model_label,works,state,reason,user_fix,last_run,fallback,checked}], events:[{at,lane,kind,from,to,text}]}`.
 
 ## Tests
 `claude plugin test agent-status`
+
+Bundled checker: `scripts/agent_health.py` with lane list `scripts/lanes.json` (Codex, Cline, opencode, Copilot, Amp and others). Leave `script` empty to use it, or point it at your own. Optional env: `DISPATCH_LANES_JSON`, `DISPATCH_LOG_DIR` (default `scripts/logs`).
