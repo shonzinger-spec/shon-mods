@@ -48,7 +48,7 @@ async function start($: EngineInterface): Promise<void> {
 
 function table(s: CqScan): string {
   const t = s.totals
-  const lines = [`commit-queue: ${plural(t.files, 'change')} in ${plural(t.repos, 'repo')}, ${plural(t.groups, 'group')}`]
+  const lines = [`${plural(t.files, 'change')} in ${plural(t.repos, 'repo')}, ${plural(t.groups, 'group')}`]
   for (const r of s.repos) {
     if (!r.readable) lines.push(`${r.name}: unreadable (${r.error ?? 'unknown'})`)
     else if (r.groups.length) {
@@ -98,7 +98,7 @@ async function commit($: EngineInterface, ref: string): Promise<string> {
   } else {
     for (const repo of s.repos) for (const group of repo.groups) targets.push({ repo, group })
   }
-  if (!targets.length) return 'commit-queue: nothing waiting.'
+  if (!targets.length) return 'nothing waiting.'
   const lines: string[] = []
   for (const { repo, group: g } of targets) {
     if (repo.truncated) lines.push(`- ${g.id}: too many changes to scan safely; commit this repo by hand`)
@@ -118,14 +118,14 @@ async function commit($: EngineInterface, ref: string): Promise<string> {
     }
   }
   await scan($).catch(() => {})
-  return ['commit-queue:', ...lines].join('\n')
+  return lines.join('\n')
 }
 
 async function stat($: EngineInterface, ref: string): Promise<string> {
   const hit = findGroup(await scan($), ref)
   if (typeof hit === 'string') return hit
   const r = await py<{ ok: boolean; error?: string; files: { path: string; xy: string; added: number; deleted: number; withheld: string | null }[] }>($, ['stat', hit.repo.repo, hit.group.group], 90000)
-  if (!r.ok) return `commit-queue: ${r.error ?? 'stat failed'}`
+  if (!r.ok) return `${r.error ?? 'stat failed'}`
   return [`${hit.group.id} [${hit.group.branch ?? '?'}]`, ...r.files.map(f => `  ${f.xy}  ${f.path}  +${f.added}/-${f.deleted}${f.withheld ? `  WITHHELD (${f.withheld})` : ''}`)].join('\n')
 }
 
@@ -146,7 +146,7 @@ export const register: Register = (on, options) => {
       if (sub === 'stat') return { text: ref ? await stat($, ref) : 'usage: /review-commits stat <repo:group>' }
       return { text: table(await scan($)) }
     } catch (err) {
-      return { text: `commit-queue: scan failed: ${short(err)}` }
+      return { text: `scan failed: ${short(err)}` }
     }
   })
 

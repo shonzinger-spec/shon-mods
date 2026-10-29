@@ -67,9 +67,9 @@ export const register: Register = on => {
 
   on('command.run', { command: 'healthband' }, async $ => {
     const r = await check($)
-    if (!r) return { text: 'health-band: no report' }
+    if (!r) return { text: 'no report' }
     const lines = r.issues.map(i => `${i.level === 'red' ? '🔴' : '🟡'} ${i.text}`)
-    return { text: [`health-band: ${r.level.toUpperCase()} (${r.checked_at})`, ...(lines.length ? lines : ['🟢 all checks pass'])].join('\n') }
+    return { text: [`${r.level.toUpperCase()} (${r.checked_at})`, ...(lines.length ? lines : ['🟢 all checks pass'])].join('\n') }
   })
 
   // Issue rows live in the second-brain window (brain-sync); /healthband lists them. The band draws only the gauges.
