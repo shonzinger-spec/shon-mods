@@ -106,7 +106,7 @@ test('a number from the user prompt backs the reply', async ($, on) => {
 test('a reply with no metrics stays quiet', async ($, on) => {
   const toasts: string[] = []
   engine(on, toasts, 'ok')
-  await $.turn.complete(turn('Renamed the file and the tests pass at 1.5x speed.'))
+  await $.turn.complete(turn('Renamed the file and the loop runs at 1.5x speed.'))
   expect(toasts).toEqual([])
   const r = await $.command.run(RUN)
   expect(r.text ?? '').toContain('quoted no PF')
@@ -174,4 +174,102 @@ test('context added after a tool result backs the reply', async ($, on) => {
   await $.tool.call({ tool: 'Bash', command: 'ls' })
   await $.turn.complete(turn('That was PF 0.90.'))
   expect(toasts).toEqual([])
+})
+
+// ---- done-claim gate ----
+type Call = { tool: string; command?: string; file_path?: string; agentId?: string }
+function gateEngine(on: On, toasts: string[], logs: string[], results: Record<string, { text: string; isError?: boolean }>) {
+  on('ui.toast', (_, e) => {
+    toasts.push(e.text)
+    return { value: undefined }
+  })
+  on('ui.log', (_, e) => {
+    logs.push(e.text)
+    return { value: undefined } as never
+  })
+  on('tool.call', (_, e) => {
+    const c = e as unknown as Call
+    const r = results[c.command ?? c.file_path ?? ''] ?? { text: 'ok' }
+    return { result: {}, text: r.text, isError: r.isError } as never
+  })
+  on('turn.complete', (_, e) => ({ text: e.answer }))
+  on('prompt.submit', (_, e) => ({ text: e.text, context: e.context }))
+  on('session.messages', () => ({ value: [] }) as never)
+}
+const PYTEST = 'cd /x && python3 -m pytest -q'
+
+test('turn claiming tests pass with no Bash toasts and logs', async ($, on) => {
+  const toasts: string[] = []
+  const logs: string[] = []
+  gateEngine(on, toasts, logs, {})
+  await $.turn.complete(turn('All tests pass.'))
+  expect(toasts).toEqual(['claim-check: reply claims done/passes but no test or check ran this turn'])
+  expect(logs).toEqual(toasts)
+  expect((await $.command.run(RUN)).text ?? '').toContain('done-claim gate: reply claims done/passes but no test or check ran')
+})
+
+test('green pytest then reply stays quiet', async ($, on) => {
+  const toasts: string[] = []
+  gateEngine(on, toasts, [], { [PYTEST]: { text: '12 passed 0 failed' } })
+  await $.tool.call({ tool: 'Bash', command: PYTEST })
+  await $.turn.complete(turn('All tests pass.'))
+  expect(toasts).toEqual([])
+})
+
+test('a red check by isError or by Exit code text flags failed', async ($, on) => {
+  const toasts: string[] = []
+  gateEngine(on, toasts, [], { [PYTEST]: { text: 'boom', isError: true }, 'tsc -p .': { text: 'Exit code 2\nerror TS1' } })
+  await $.tool.call({ tool: 'Bash', command: PYTEST })
+  await $.turn.complete(turn('Tests pass.'))
+  await $.prompt.submit({ text: 'again', wait: false, origin: { kind: 'composer' } } as never)
+  await $.tool.call({ tool: 'Bash', command: 'tsc -p .' })
+  await $.turn.complete(turn('Tests pass.'))
+  expect(toasts).toEqual([
+    'claim-check: reply claims done/passes but the last check failed this turn',
+    'claim-check: reply claims done/passes but the last check failed this turn',
+  ])
+})
+
+test('an edit after the green check flags stale; md edits do not count', async ($, on) => {
+  const toasts: string[] = []
+  gateEngine(on, toasts, [], {})
+  await $.tool.call({ tool: 'Bash', command: PYTEST })
+  await $.tool.call({ tool: 'Edit', file_path: '/x/README.md' } as never)
+  await $.turn.complete(turn('Done, tests pass.'))
+  expect(toasts).toEqual([])
+  await $.tool.call({ tool: 'Edit', file_path: '/x/a.ts' } as never)
+  await $.turn.complete(turn('Done, tests pass.'))
+  expect(toasts).toEqual(['claim-check: reply claims done/passes but files changed after the last green check this turn'])
+})
+
+test('log resets on next prompt', async ($, on) => {
+  const toasts: string[] = []
+  gateEngine(on, toasts, [], {})
+  await $.tool.call({ tool: 'Bash', command: PYTEST })
+  await $.prompt.submit({ text: 'next', wait: false, origin: { kind: 'composer' } } as never)
+  await $.turn.complete(turn('All tests pass.'))
+  expect(toasts.length).toBe(1)
+})
+
+test('subagent green check counts', async ($, on) => {
+  const toasts: string[] = []
+  gateEngine(on, toasts, [], {})
+  await $.tool.call({ tool: 'Bash', command: PYTEST, agentId: 'a1' } as never)
+  await $.turn.complete(turn('All tests pass.'))
+  expect(toasts).toEqual([])
+})
+
+test('generic done with no edit stays quiet', async ($, on) => {
+  const toasts: string[] = []
+  gateEngine(on, toasts, [], {})
+  await $.turn.complete(turn('Done. That file is ready to read.'))
+  expect(toasts).toEqual([])
+})
+
+test('metric check still works alongside', async ($, on) => {
+  const toasts: string[] = []
+  gateEngine(on, toasts, [], { [PYTEST]: { text: 'profit_factor=1.3127 12 passed' } })
+  await $.tool.call({ tool: 'Bash', command: PYTEST })
+  await $.turn.complete(turn('Tests pass, PF 1.42.'))
+  expect(toasts).toEqual(['claim-check: 1 unbacked metric(s): PF 1.42. /claims for detail'])
 })
