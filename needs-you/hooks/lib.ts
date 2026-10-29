@@ -78,7 +78,7 @@ export function rowLine(r: ChatRow, nowMs: number): string {
 // The same list as plain text: the answer to /needs-you when no pane is drawn.
 export function listText(scan: Scan, exclude: string | null = null): string {
   const g = group(scan, exclude)
-  const out: string[] = [`needs-you: ${g.stalled.length} stalled, ${g.waiting.length} waiting, ${g.working.length} working, ${g.done.length} done`]
+  const out: string[] = [`${g.stalled.length} stalled, ${g.waiting.length} waiting, ${g.working.length} working, ${g.done.length} done`]
   if (g.stalled.length) out.push('', 'Stalled', ...g.stalled.map(r => `- ${rowLine(r, scan.now_ms)} [#${r.sessionId}]`))
   if (g.waiting.length) out.push('', 'Waiting on you', ...g.waiting.map(r => `- ${rowLine(r, scan.now_ms)} [#${r.sessionId}]`))
   return out.join('\n')

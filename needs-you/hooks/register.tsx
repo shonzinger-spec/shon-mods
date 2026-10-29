@@ -218,31 +218,31 @@ export const register: Register = on => {
     const cmd = parseCommand((e as { args?: string }).args ?? '')
     if (cmd.kind === 'auto') {
       await $.store.set('auto', cmd.on)
-      return { text: cmd.on ? 'needs-you: auto-continue is ON. A chat cut off by the usage limit gets one "continue" message 5 minutes after its reset. Turn off with /needs-you auto off.' : 'needs-you: auto-continue is OFF.' }
+      return { text: cmd.on ? 'auto-continue is ON. A chat cut off by the usage limit gets one "continue" message 5 minutes after its reset. Turn off with /needs-you auto off.' : 'auto-continue is OFF.' }
     }
     if (cmd.kind === 'auto-status') {
-      return { text: `needs-you: auto-continue is ${(await $.store.get('auto').catch(() => undefined)) === true ? 'ON' : 'OFF'}.` }
+      return { text: `auto-continue is ${(await $.store.get('auto').catch(() => undefined)) === true ? 'ON' : 'OFF'}.` }
     }
     if (cmd.kind === 'resume') {
       const self = await selfId($)
       const rs = await refresh($)
-      if (!rs) return { text: `needs-you: ${await read($, errorAtom)}` }
+      if (!rs) return { text: `${await read($, errorAtom)}` }
       const ready = resumable({ ...rs, now_ms: await $.clock.now() }, await readSent($), self)
       if (cmd.n === null) {
-        return { text: ready.length ? ['needs-you: ready to continue (use /needs-you resume <n>)', ...ready.map((r, i) => `${i + 1}. ${r.title} (reset ${resetText(r.limit?.reset_at_ms ?? 0, rs.now_ms)})`)].join('\n') : 'needs-you: no chat is waiting to continue after a usage limit.' }
+        return { text: ready.length ? ['ready to continue (use /needs-you resume <n>)', ...ready.map((r, i) => `${i + 1}. ${r.title} (reset ${resetText(r.limit?.reset_at_ms ?? 0, rs.now_ms)})`)].join('\n') : 'needs-you: no chat is waiting to continue after a usage limit.' }
       }
       const pick = ready[cmd.n - 1]
-      if (!pick) return { text: `needs-you: no chat number ${cmd.n} in the ready list.` }
-      return { text: `needs-you: ${await continueChat($, pick.sessionId)}` }
+      if (!pick) return { text: `no chat number ${cmd.n} in the ready list.` }
+      return { text: `${await continueChat($, pick.sessionId)}` }
     }
     const scan = await refresh($)
     const self = await selfId($)
     const opened = await $.ui.open({ id: PANE, title: 'Needs you' })
-    if (!scan) return { text: `needs-you: ${await read($, errorAtom)}` }
+    if (!scan) return { text: `${await read($, errorAtom)}` }
     // A pane the surface cannot place (too narrow) leaves the text list as the answer.
     if (!opened.isPlaced) return { text: listText(scan, self) }
     const s = statusText(group(scan, self))
-    return { text: `needs-you: ${s ?? 'nothing waiting on you'}.` }
+    return { text: `${s ?? 'nothing waiting on you'}.` }
   })
 
   on('ui.render', { component: 'Pane', requestId: PANE }, async ($, e) => {

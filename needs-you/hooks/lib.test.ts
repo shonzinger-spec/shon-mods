@@ -43,7 +43,7 @@ test('text list has stalled before waiting, each with a chat link', () => {
   const t = listText(SCAN)
   expect(t.indexOf('Stalled')).toBeLessThan(t.indexOf('Waiting on you'))
   expect(t).toContain('[#w1]')
-  expect(t.split('\n')[0]).toBe('needs-you: 1 stalled, 2 waiting, 1 working, 1 done')
+  expect(t.split('\n')[0]).toBe('1 stalled, 2 waiting, 1 working, 1 done')
 })
 
 test('parsers tolerate junk', () => {

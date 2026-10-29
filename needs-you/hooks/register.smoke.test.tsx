@@ -97,7 +97,7 @@ test('pane draws stalled, waiting and the collapsed counts on terminal and deskt
   const w = engine(on)
   await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
   const r = await $.command.run({ command: 'needs-you', args: '', ...RUN })
-  expect(String((r as { text?: string }).text)).toBe('needs-you: 1 waiting, 1 stalled.')
+  expect(String((r as { text?: string }).text)).toBe('1 waiting, 1 stalled.')
   // the scanner got the running chat id and ran isolated, read-only
   expect(w.argvs[0]?.slice(0, 2)).toEqual(['/usr/bin/python3', '-I'])
   expect(w.argvs[0]).toContain('r1')
