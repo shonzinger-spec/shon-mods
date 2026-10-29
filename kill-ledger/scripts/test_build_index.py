@@ -81,5 +81,14 @@ class LedgerIndex(unittest.TestCase):
         self.assertEqual((terms["momentum"]["needs_context"], terms["momentum"]["strict"]), (True, False))
 
 
+    def test_terms_in_relocated_index_hook_are_found(self):
+        with open(os.path.join(self.mem, "MEMORY.md"), "w", encoding="utf-8") as f:
+            f.write("# Memory Index\n\n## Live\n\n- [project_b.md](project_b.md) — 🛑 2026-10-01 short line …\n")
+        with open(os.path.join(self.mem, "project_b.md"), "w", encoding="utf-8") as f:
+            f.write("---\nname: b\ndescription: unrelated\n---\nbody text\n\n## Index hook (relocated from MEMORY.md 2026-10-29)\nfootprint sweep killed\n\n## Other\nmomentum not in a hook\n")
+        terms = build_index.build(self.mem, {"footprint": ["footprint"], "momentum": ["momentum"]})["terms"]
+        self.assertEqual(terms["footprint"]["files"], ["project_b.md"])
+        self.assertEqual(terms.get("momentum", {}).get("files", []), [])
+
 if __name__ == "__main__":
     unittest.main()

@@ -2,7 +2,7 @@
 """Build kill-ledger's index from the auto-memory, by script (never by hand).
 
 Reads   ~/.claude/projects/-Users-shonzinger/memory/MEMORY.md  (one line per topic file)
-        + each linked topic file's frontmatter `description`
+        + each linked topic file's frontmatter `description` and its `## Index hook` sections
         + ../vocab.json (strategy names and their aliases; the only hand-kept part. A name
           starting with '?' is generic (needs_context); with '?!' also strict)
 Writes  ../data/kill_index.json
@@ -60,6 +60,17 @@ def description_of(path):
     m = re.search(r"^description:\s*(.+)$", head, re.M)
     return m.group(1).strip().strip('"') if m else ""
 
+
+HOOK = re.compile(r"^## Index hook[^\n]*\n(.*?)(?=^## |\Z)", re.M | re.S)
+
+
+def hook_text_of(path):
+    """Text under the topic file's '## Index hook ...' headings: detail moved out of MEMORY.md lines."""
+    try:
+        with open(path, encoding="utf-8") as f:
+            return " ".join(m.group(1).strip() for m in HOOK.finditer(f.read()))
+    except OSError:
+        return ""
 
 def reason_of(text, limit=240):
     t = re.sub(r"^\s*(?:🛑|⚠️|⏳|🔧|📄|✅)\s*", "", text)
@@ -150,7 +161,7 @@ def build(mem_dir, vocab, ledger_path=None):
         entries.append({
             "file": fname, "label": label, "section": heading, "status": status, "emoji": emo,
             "date": date, "date_src": date_src, "reason": reason_of(text),
-            "_hay": " ".join([label, fname.replace("_", " "), text, desc]),
+            "_hay": " ".join([label, fname.replace("_", " "), text, desc, hook_text_of(os.path.join(mem_dir, fname))]),
         })
 
     by_file = {e["file"]: e for e in entries}
